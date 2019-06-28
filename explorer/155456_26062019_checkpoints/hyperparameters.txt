@@ -1,0 +1,11 @@
+dataset_dir=./data/readme/
+workers=0
+epochs=10
+batch_size=64
+lr=0.0001
+momentum=0.9
+use_dropout=True
+use_batchnorm=True
+seed=42
+resume=None
+check_dir=experiments/

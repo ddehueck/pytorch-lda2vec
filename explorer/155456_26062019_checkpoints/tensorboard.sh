@@ -1,0 +1,1 @@
+tensorboard --logdir=../155456_26062019_checkpoints/
