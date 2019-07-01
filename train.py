@@ -34,6 +34,9 @@ def main():
                         help='dataset to use when training (default: freetext)')
     parser.add_argument('--dataset-dir', type=str, default='data/',
                         help='dataset directory (default: data/)')
+    parser.add_argument('--save-dataset', type=str_to_bool, default=False,
+                        help='Boolean value to save dataset to a file\
+                        (default: False)')
     parser.add_argument('--workers', type=int, default=4, metavar='N',
                        help='dataloader threads (default: 4)')
     """

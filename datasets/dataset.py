@@ -11,26 +11,24 @@ class LDA2VecDataset(Dataset):
     BETA = 0.75
 
     def __init__(self, src_dir, device, window_size=5):
-        self.vocabulary = []
+        self.device = device
+        self.term_freq_dict = dict()
         self.window_size = window_size
-        self.freq = []
         self.files = self._get_files_in_dir(src_dir)
         self.examples = []
         self.n_examples = 0
-        self.device = device
         self.idx2doc = dict()
 
     def __getitem__(self, index):
         return self._example_to_tensor(*self.examples[index])
 
     def __len__(self):
-        # Use a counter so this doesn't have to be computed on every call
-        return self.n_examples
+        return len(self.examples)
 
     def read_file(self, f):
         """
         Read File
-        
+ 
         Reads file and returns string. This is to allow different file formats
         to be used.
 
@@ -59,54 +57,15 @@ class LDA2VecDataset(Dataset):
                     break
         return tokenized
 
-    def generate_examples(self):
+
+    def generate_examples_from_file(self, file, tf_dict):
         """
-        Generate Dataset Examples
+        Generate all examples from a file
 
-        Once self.files is populated and self.read_file is implemented
-        then this method can be called and will populate self.examples with
-        data examples to be returned by self.__getitem__
-
-        :returns: None
+        :param file: File from self.files
+        :param tf_dict: Term frequency dict
+        :returns: List of examples
         """
-        print('\nGenerating Examples for Dataset...')
-        for doc_id, file in enumerate(tqdm(self.files)):
-            path, filename = os.path.split(file)
-            self.idx2doc[str(doc_id)] = filename
-
-            doc_str = self.read_file(file)
-            tokenized_doc = word_tokenize(doc_str)
-
-            for i, token in enumerate(tokenized_doc):
-                # Ensure token is recorded
-                self._add_token_to_vocab(token)
-                # Generate context words for token in this doc
-                context_words = self._generate_contexts(
-                    token, i, tokenized_doc
-                )
-
-                # Form Examples:
-                # An example consists of:
-                #   center word: token
-                #   document id: doc_id
-                #   context_word: tokenized_doc[context_word_pos]
-                # In the form of:
-                # (token, doc_id), context - follows form: (input, target)
-                in_tuple = (token, doc_id)
-                new_examples = [(in_tuple, ctxt) for ctxt in context_words]
-
-                # Add to class
-                self.examples.extend(new_examples)
-                self.n_examples += len(new_examples)
-
-    
-    def generate_examples_from_file(self, in_tuple):
-        """
-        Generate all example from a file
-
-        :param in_tuple: Input tuple of form: (file, lock)
-        """
-        file, lock = in_tuple
         doc_id = self.files.index(file)
         path, filename = os.path.split(file)
         self.idx2doc[str(doc_id)] = filename
@@ -114,11 +73,10 @@ class LDA2VecDataset(Dataset):
         doc_str = self.read_file(file)
         tokenized_doc = word_tokenize(doc_str)
 
+        examples = []
         for i, token in enumerate(tokenized_doc):
             # Ensure token is recorded
-            lock.acquire()
-            self._add_token_to_vocab(token)
-            lock.release()
+            self._add_token_to_vocab(token, tf_dict)
             # Generate context words for token in this doc
             context_words = self._generate_contexts(
                 token, i, tokenized_doc
@@ -135,41 +93,97 @@ class LDA2VecDataset(Dataset):
             new_examples = [(in_tuple, ctxt) for ctxt in context_words]
 
             # Add to class
-            self.examples.extend(new_examples)
-            self.n_examples += len(new_examples)
+            examples.extend(new_examples)
+        return examples
 
 
     def generate_examples_multi(self):
         pool = ThreadPool(multiprocessing.cpu_count())
-        lock = multiprocessing.Lock()
-        files_w_lock = list(zip(self.files, [lock for _ in range(len(self.files))]))
+        batch_size = 250
+        file_batches = self._batch_files(batch_size=batch_size)
 
-        for _ in tqdm(
+        print('\nGenerating Examples for Dataset (multi-threaded)...')
+        for results in tqdm(
             pool.imap_unordered(
-                self.generate_examples_from_file,
-                files_w_lock),
-            total=len(self.files)):
-            pass
+                self._generate_examples_worker,
+                file_batches),
+            total=len(self.files)//batch_size + 1):
+
+            # Reduce results into final locations
+            examples, tf_dict = results
+            self.examples.extend(examples)
+            self._reduce_tf_dict(tf_dict)
+
         pool.close()
         pool.join()
 
 
-    def _add_token_to_vocab(self, token):
+    def _generate_examples_worker(self, file_batch):
         """
-        Add token to self.vocabulary
+        Generate examples worker
 
-        Adds new tokens to the end of self.vocabulary and keeps track of
+        Worker to generate examples in a map reduce paradigm
+
+        :param file_batch: List of files - a subset of self.files
+        """
+        tf_dict = dict()
+        examples = []
+
+        for f in file_batch:
+            examples.extend(self.generate_examples_from_file(f, tf_dict))
+        return examples, tf_dict
+
+
+    def _batch_files(self, batch_size=250):
+        """
+        Batch Files
+
+        Seperates self.files into smaller batches of files of
+        size batch_size
+
+        :param batch_size: Int - size of each batch
+        :returns: Generator of batches
+        """
+        n_files = len(self.files)
+        for b_idx in range(0, n_files, batch_size):
+            # min() so we don't index outside of self.files
+            yield self.files[b_idx:min(b_idx + batch_size, n_files)]
+
+
+    def _add_token_to_vocab(self, token, tf_dict):
+        """
+        Add token to the token frequency dict
+
+        Adds new tokens to the tf_dict  and keeps track of
         frequency of tokens
 
         :param token: String
+        :param tf_dict: A {"token": frequency,} dict
         :returns: None
         """
-        if token not in self.vocabulary:
-            self.vocabulary.append(token)
-            self.freq.append(1)
+        if token not in tf_dict.keys():
+            tf_dict[token] = 1
         else:
             # Token in vocab - increase frequency for token
-            self.freq[self.vocabulary.index(token)] += 1
+            tf_dict[token] += 1
+
+    def _reduce_tf_dict(self, tf_dict):
+        """
+        Reduce a term frequency dictionary
+
+        Updates self.term_freq_dict with values in tf_dict argument.
+        Adds new keys if needed or just sums frequencies
+
+        :param tf_dict: A term frequency dictionary
+        :returns: None - updates self.term_freq_dict
+        """
+        for key in tf_dict:
+            if key in self.term_freq_dict.keys():
+                # Add frequencies
+                self.term_freq_dict[key] += tf_dict[key]
+            else:
+                # Merge
+                self.term_freq_dict[key] = tf_dict[key]
 
     def _generate_contexts(self, token, token_idx, tokenized_doc):
         """
@@ -215,9 +229,13 @@ class LDA2VecDataset(Dataset):
         return files
 
     def _example_to_tensor(self, example, target):
-        center = torch.tensor([self.vocabulary.index(example[0])]).to(self.device)
+        center = torch.tensor([
+            list(self.term_freq_dict.keys()).index(example[0])
+        ]).to(self.device)
         doc_id = torch.tensor([example[1]]).to(self.device)
-        target = torch.tensor([self.vocabulary.index(target)]).to(self.device)
+        target = torch.tensor([
+            list(self.term_freq_dict.keys()).index(target)
+        ]).to(self.device)
         return ((center, doc_id), target)
 
 

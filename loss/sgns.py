@@ -11,14 +11,17 @@ class SGNSLoss(nn.Module):
 
     def __init__(self, dataset, word_embeddings, device):
         super(SGNSLoss, self).__init__()
-
         self.dataset = dataset
-        self.vocab_len = len(dataset.vocabulary)
+        self.vocab_len = len(dataset.term_freq_dict)
         self.word_embeddings = word_embeddings
         self.device = device
+
         # Helpful values for unigram distribution generation
-        self.transformed_freq_vec = torch.tensor(dataset.freq).pow(self.BETA)
+        self.transformed_freq_vec = torch.tensor(
+                list(dataset.term_freq_dict.values())
+            ).pow(self.BETA)
         self.freq_sum = torch.sum(self.transformed_freq_vec)
+
         # Generate table
         self.unigram_table = self.generate_unigram_table()
 
@@ -29,6 +32,10 @@ class SGNSLoss(nn.Module):
         log_targets = torch.log(torch.sigmoid(dots).clamp(self.EPSILON))
         log_samples = []
         for l in range(self.NUM_SAMPLES):
+            # Could probably optimize this by optimizing self.get_unigram
+            # _sample() - maybe return all the samples needed as specified by
+            # self.NUM_SAMPLES? Would probably by faster than random.choice *
+            # self.NUM_SAMPLES. 
             sample = self.get_unigram_sample()
             dot = (torch.neg(context) * sample).sum(-1)
             log_samples.append(torch.log(torch.sigmoid(dot).clamp(self.BETA)))
@@ -54,3 +61,4 @@ class SGNSLoss(nn.Module):
             PDF.append(self.get_unigram_prob(token_idx))
         # Generate the table from PDF
         return np.random.choice(self.vocab_len, self.UNIGRAM_TABLE_SIZE, p=PDF)
+

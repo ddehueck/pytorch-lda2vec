@@ -19,20 +19,27 @@ class Trainer:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.saver = Saver(args)
         self.writer = SummaryWriter(log_dir=self.saver.save_to_dir, flush_secs=3)
+
         # Load data
         self.dataset = args.dataset(args.dataset_dir, self.device)
-        self.saver.save_state({'dataset': {
-            'examples': self.dataset.examples,
-            'idx2doc': self.dataset.idx2doc,
-            'files': self.dataset.files,
-        }}, 'dataset.pth')
+        print("Finished Loading Dataset!")
+
+        if args.save_dataset:
+            self.saver.save_state({'dataset': {
+                'examples': self.dataset.examples,
+                'idx2doc': self.dataset.idx2doc,
+                'files': self.dataset.files,
+            }}, 'dataset.pth')
+            print("Finished Saving Dataset")
+
         self.dataloader = DataLoader(
             self.dataset,
             batch_size=args.batch_size,
             shuffle=True,
             num_workers=args.workers)
+
         # Load model and training necessities
-        self.model = Lda2vec(len(self.dataset.vocabulary), 128, 64,
+        self.model = Lda2vec(len(self.dataset.term_freq_dict), 128, 64,
                              len(self.dataset.files), args).to(self.device)
         self.optim = optim.SGD(
             self.model.parameters(),
@@ -45,7 +52,7 @@ class Trainer:
         self.writer.add_graph(self.model, iter(self.dataloader).next()[0])
         # Save metadata
         self.saver.save_metadata({
-            'vocabulary': self.dataset.vocabulary,
+            'term_freq_dict': self.dataset.term_freq_dict,
             'index_to_document': self.dataset.idx2doc,
         })
 
