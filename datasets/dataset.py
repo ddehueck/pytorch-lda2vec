@@ -6,15 +6,14 @@ from torch.utils.data.dataset import Dataset
 from nltk.tokenize import word_tokenize
 from multiprocessing.dummy import Pool as ThreadPool
 
-
 class LDA2VecDataset(Dataset):
     BETA = 0.75
 
-    def __init__(self, src_dir, device, window_size=5):
+    def __init__(self, args, device):
+        self.args = args
         self.device = device
         self.term_freq_dict = dict()
-        self.window_size = window_size
-        self.files = self._get_files_in_dir(src_dir)
+        self.files = self._get_files_in_dir(args.dataset_dir)
         self.examples = []
         self.n_examples = 0
         self.idx2doc = dict()
@@ -99,8 +98,8 @@ class LDA2VecDataset(Dataset):
 
     def generate_examples_multi(self):
         pool = ThreadPool(multiprocessing.cpu_count())
-        batch_size = 250
-        file_batches = self._batch_files(batch_size=batch_size)
+        batch_size = self.args.file_batch_size
+        file_batches = self._batch_files(batch_size)
 
         print('\nGenerating Examples for Dataset (multi-threaded)...')
         for results in tqdm(
@@ -134,7 +133,7 @@ class LDA2VecDataset(Dataset):
         return examples, tf_dict
 
 
-    def _batch_files(self, batch_size=250):
+    def _batch_files(self, batch_size):
         """
         Batch Files
 
@@ -199,7 +198,7 @@ class LDA2VecDataset(Dataset):
         """
         contexts = []
         # Iterate over each position in window
-        for w in range(-self.window_size, self.window_size + 1):
+        for w in range(-self.args.window_size, self.args.window_size + 1):
             context_pos = token_idx + w
 
             # Make sure current center and context are valid
@@ -214,6 +213,9 @@ class LDA2VecDataset(Dataset):
         return contexts
 
     def _get_files_in_dir(self, src_dir):
+        if src_dir is None:
+            return []
+
         files = []
         src_dir = os.path.expanduser(src_dir)
         d = os.path.join(src_dir)

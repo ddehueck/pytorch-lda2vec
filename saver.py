@@ -32,6 +32,23 @@ class Saver:
         filename = 'checkpoint_' + str(state['epoch']) + '.pth'
         self.save_state(state, filename)
 
+    def save_dataset(self, dataset):
+        """
+        Save Dataset
+
+        Saves all information necessaray from an LDA2VecDataset needed to
+        recover the dataset.
+
+        :param dataset: An LDA2VecDataset object
+        :returns: None
+        """
+        self.save_state({'dataset': {
+            'examples': dataset.examples,
+            'idx2doc': dataset.idx2doc,
+            'term_freq_dict': dataset.term_freq_dict
+        }}, 'dataset.pth')
+
+
     def save_metadata(self, metadata):
         """
         Saves metadata e.g:

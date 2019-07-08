@@ -4,15 +4,15 @@ import torch.nn.functional as F
 
 class Lda2vec(nn.Module):
 
-    def __init__(self, vocab_size, embedding_len, num_topics, num_docs, args):
+    def __init__(self, vocab_size, num_docs, args):
         super(Lda2vec, self).__init__()
         self.args = args
-        self.word_embeds = nn.Embedding(vocab_size, embedding_len)
-        self.doc_weights = nn.Embedding(num_docs, num_topics)
-        self.topic_embeds = nn.Parameter(t.randn((embedding_len, num_topics)), requires_grad=True)
+        self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
+        self.doc_weights = nn.Embedding(num_docs, args.num_topics)
+        self.topic_embeds = nn.Parameter(t.randn((args.embedding_len, args.num_topics)), requires_grad=True)
         # Reqularization Layers
         self.dropout = nn.Dropout(p=0.5)
-        self.batchnorm = nn.BatchNorm1d(embedding_len)
+        self.batchnorm = nn.BatchNorm1d(args.embedding_len)
 
     def forward(self, x):
         # x should take the form of: (center word, doc_id)
@@ -20,7 +20,7 @@ class Lda2vec(nn.Module):
         word_vecs = self.word_embeds(x[0]) # returns wordvec of index x[0] - the center word
 
         # Get document vector
-        # 1. Softmax document embeddings to get proportions
+        # 1. Softmax document weights to get proportions
         doc_weights = self.doc_weights(x[1]) # latent doc embedding of x[1] - doc_id
         proportions = F.softmax(doc_weights, dim=1)
 

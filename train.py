@@ -39,13 +39,27 @@ def main():
                         (default: False)')
     parser.add_argument('--workers', type=int, default=4, metavar='N',
                        help='dataloader threads (default: 4)')
+    parser.add_argument('--window-size', type=int, default=5, help='Window size\
+                        used when generating training examples (default: 5)')
+    parser.add_argument('--file-batch-size', type=int, default=250, help='Batch size\
+                        used when mult-threading the generation of training examples\
+                        (default: 250)')
+
+    """
+    Model Parameters
+    """
+    parser.add_argument('--num-topics', type=int, default=32, help='Number of topics\
+                        to learn during training (default: 32)')
+    parser.add_argument('--embedding-len', type=int, default=128, help='Length of\
+                        embeddings in model (default: 128)')
+    
     """
     Training Hyperparameters
     """
-    parser.add_argument('--epochs', type=int, default=10, metavar='N',
-                        help='number of epochs to train for - iterations over the dataset (default: 10)')
-    parser.add_argument('--batch-size', type=int, default=16,
-                        metavar='N', help='number of examples in a training batch (default: 16)')
+    parser.add_argument('--epochs', type=int, default=15, metavar='N',
+                        help='number of epochs to train for - iterations over the dataset (default: 15)')
+    parser.add_argument('--batch-size', type=int, default=64,
+                        metavar='N', help='number of examples in a training batch (default: 64)')
     parser.add_argument('--lr', type=float, default=1e-4, metavar='LR',
                         help='learning rate (default: 1e-4)')
     parser.add_argument('--momentum', type=float, default=0.9,
@@ -54,10 +68,13 @@ def main():
                         help='Boolean value to apply dropout during training\
                         (default: True)')
     parser.add_argument('--use-batchnorm', type=str_to_bool, default=True,
-                              help='Boolean value to apply batch normalization\
+                        help='Boolean value to apply batch normalization\
                               during training (default: True)')
     parser.add_argument('--seed', type=int, default=42, metavar='S',
                         help='random seed (default: 42)')
+    parser.add_argument('--log-step', type=int, default=250, help='Step at which for every step training info\
+                        is logged. (default: 250)')
+    
     """
     Checkpoint options
     """

@@ -5,7 +5,7 @@ import numpy as np
 
 class SGNSLoss(nn.Module):
     BETA = 0.75  # exponent to adjust sampling frequency
-    NUM_SAMPLES = 5
+    NUM_SAMPLES = 15  # Taken from Moody's OG code
     UNIGRAM_TABLE_SIZE = 10**5
     EPSILON = 1e-9  # value to lower bound clamp to avoid -inf
 
