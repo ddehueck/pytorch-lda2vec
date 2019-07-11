@@ -42,3 +42,19 @@ class Lda2vec(nn.Module):
 
         return context_vecs
 
+    def get_proportions(self):
+        """
+        Softmax document weights to get proportions
+        """
+        return F.softmax(self.doc_weights.weight, dim=1)
+
+    def get_doc_vectors(self):
+        """
+        Multiply by proportions by topic embeddings to get document vectors
+        """
+        proportions = self.get_proportions()
+        doc_vecs = t.matmul(self.topic_embeds, t.t(proportions))
+
+        return t.t(doc_vecs)
+
+

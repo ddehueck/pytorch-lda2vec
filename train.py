@@ -58,10 +58,10 @@ def main():
     """
     parser.add_argument('--epochs', type=int, default=15, metavar='N',
                         help='number of epochs to train for - iterations over the dataset (default: 15)')
-    parser.add_argument('--batch-size', type=int, default=64,
-                        metavar='N', help='number of examples in a training batch (default: 64)')
-    parser.add_argument('--lr', type=float, default=1e-4, metavar='LR',
-                        help='learning rate (default: 1e-4)')
+    parser.add_argument('--batch-size', type=int, default=4096,
+                        metavar='N', help='number of examples in a training batch (default: 4096)')
+    parser.add_argument('--lr', type=float, default=1e-3, metavar='LR',
+                        help='learning rate (default: 1e-3)')
     parser.add_argument('--momentum', type=float, default=0.9,
                         metavar='M', help='momentum (default: 0.9)')
     parser.add_argument('--use-dropout', type=str_to_bool, default=True,
@@ -74,14 +74,16 @@ def main():
                         help='random seed (default: 42)')
     parser.add_argument('--log-step', type=int, default=250, help='Step at which for every step training info\
                         is logged. (default: 250)')
+    parser.add_argument('--clip', type=float, default=5, help='Value to keep gradient between (-val, +val)\
+                        (default: 5)')
     
     """
     Checkpoint options
     """
     parser.add_argument('--resume', type=str, default=None,
-                        help='put the path to resuming file if needed')
+                        help='Put the path to checkpoint file to resume training')
     parser.add_argument('--check_dir', type=str, default='experiments/',
-                        help='set the checkpoint name')
+                        help='Set the checkpoint directory name')
 
     args = parser.parse_args()
     trainer = Trainer(args)

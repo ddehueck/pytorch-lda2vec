@@ -36,7 +36,7 @@ class Saver:
         """
         Save Dataset
 
-        Saves all information necessaray from an LDA2VecDataset needed to
+        Saves all information needed from an LDA2VecDataset needed to
         recover the dataset.
 
         :param dataset: An LDA2VecDataset object
@@ -47,16 +47,4 @@ class Saver:
             'idx2doc': dataset.idx2doc,
             'term_freq_dict': dataset.term_freq_dict
         }}, 'dataset.pth')
-
-
-    def save_metadata(self, metadata):
-        """
-        Saves metadata e.g:
-        - Vocabulary
-        - Index to Document Name Dictionary
-        :param metadata: A dictionary containing the data to save
-        :return: None - saved file is outputted to the save to directory
-        """
-        filename = 'metadata.pth'
-        self.save_state(metadata, filename)
 

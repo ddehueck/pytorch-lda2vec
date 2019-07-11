@@ -12,6 +12,7 @@ from logger import Logger
 import utils
 from tqdm import tqdm
 import numpy as np
+import os
 
 class Trainer:
 
@@ -37,15 +38,29 @@ class Trainer:
 
         # Load model and training necessities
         self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args).to(self.device)
-        self.optim = optim.Adam( self.model.parameters(), lr=args.lr)
+        self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
         self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.device)
         self.dirichlet = DirichletLoss()
 
         # Add graph to tensorboard
         self.writer.add_graph(self.model, iter(self.dataloader).next()[0])
 
+        # Load checkpoint if need be
+        if args.resume is not None:
+            self.logger.info('Loaded checkpoint {}'.format(args.resume))
+            if not os.path.isfile(args.resume):
+                raise Exception("There was no checkpoint found at '{}'" .format(args.resume))
+            
+            checkpoint = torch.load(args.resume)
+            self.args.epochs -= checkpoint['epoch']
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.optim.load_state_dict(checkpoint['optimizer_state_dict'])
+
+            self.logger.info('Loaded checkpoint {} at epoch {}'.format(args.resume, checkpoint['epoch']))
+
 
     def train(self):
+        # TODO: Offload logging data into logger class
         self.logger.info('Training on device: {}'.format(self.device))
         running_loss, sgns_loss, diri_loss, global_step = 0.0, 0.0, 0.0, 0
         for epoch in range(self.args.epochs):
@@ -55,14 +70,15 @@ class Trainer:
                 (center, doc_id), target = data
                 # Remove accumulated gradients
                 self.optim.zero_grad()
-                # Get context vector - word + doc
+                # Get context vector: word + doc
                 context = self.model((center, doc_id))
-                # Calc loss - SGNS + Dirichlet
+                # Calc loss: SGNS + Dirichlet
                 sgns = self.sgns(context, self.model.word_embeds(target))
                 diri = self.dirichlet(self.model.doc_weights(doc_id))
                 loss = sgns + diri
                # Backprop and update
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
                 self.optim.step()
 
                 # Keep track of loss
@@ -94,20 +110,24 @@ class Trainer:
                     self.logger.info('\nLogging Proportions: Average Sparsity score is {}\n'.format(avg_s_score))   
                     self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
 
+                    _, max_indices = torch.max(proportions, dim=1)
+                    self.logger.info('\nLogging Maximum Indices: {}\n'.format(max_indices))
+            
             # Log epoch loss
-            self.logger.info("Training Loss:", running_loss/(global_step*self.args.batch_size))
+            self.logger.info("Training Loss: {}".format(running_loss/(global_step*self.args.batch_size)))
 
            # Visualize document embeddings
             self.writer.add_embedding(
-                F.softmax(self.model.doc_weights.weight, dim=1),
+                self.model.get_doc_vectors(),
                 global_step=epoch,
-                tag='DPEs'
+                tag='DEs',
+                metadata=list(self.dataset.idx2doc.values())
             )
 
             # Save checkpoint
             self.logger.info("Beginning to save checkpoint")
             self.saver.save_checkpoint({
-                'epoch': epoch,
+                'epoch': epoch + 1,
                 'model_state_dict': self.model.state_dict(),
                 'optimizer_state_dict': self.optim.state_dict(),
                 'loss': loss,
