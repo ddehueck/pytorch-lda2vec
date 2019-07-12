@@ -37,7 +37,14 @@ class Trainer:
             shuffle=True, num_workers=args.workers)
 
         # Load model and training necessities
-        self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args).to(self.device)
+        self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args)
+        # Multi-GPU Support
+        if torch.cuda.device_count() > 1:
+            self.model = torch.nn.DataParallel(self.model)
+            self.logger.info("Using {} GPUs".format(torch.cuda.device_count()))
+        # Send model to proper device
+        self.model.to(self.device)
+
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
         self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.device)
         self.dirichlet = DirichletLoss()
