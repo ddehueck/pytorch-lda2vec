@@ -1,4 +1,5 @@
 import argparse
+from dist_train import DistTrainer
 from trainer import Trainer
 from datasets import newsgroups
 from datasets import freetext
@@ -85,9 +86,21 @@ def main():
     parser.add_argument('--check_dir', type=str, default='experiments/',
                         help='Set the checkpoint directory name')
 
+    """
+    Training Settings
+    """
+    parser.add_argument('--distributed', type=str_to_bool, default=False, help='Boolean to\
+                        use distributed data parallel (default: False)')
+    
+
     args = parser.parse_args()
-    trainer = Trainer(args)
-    # Begin training!
+
+    if args.distributed:
+        trainer = DistTrainer(args)
+    else:
+        trainer = Trainer(args)
+    
+    # Begin Training!
     trainer.train()
 
 

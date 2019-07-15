@@ -17,9 +17,9 @@ import os
 class Trainer:
 
     def __init__(self, args):
+        print("CCOMINON")
         self.args = args  # Argument parser results
-        # TODO: Add support for multiple GPUs
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.saver = Saver(args)
         self.writer = SummaryWriter(log_dir=self.saver.save_to_dir, flush_secs=3)
         self.logger = Logger(self.saver.save_to_dir).logger
@@ -38,11 +38,6 @@ class Trainer:
 
         # Load model and training necessities
         self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args)
-        # Multi-GPU Support
-        if torch.cuda.device_count() > 1:
-            self.model = torch.nn.DataParallel(self.model)
-            self.logger.info("Using {} GPUs".format(torch.cuda.device_count()))
-        # Send model to proper device
         self.model.to(self.device)
 
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
@@ -50,6 +45,7 @@ class Trainer:
         self.dirichlet = DirichletLoss()
 
         # Add graph to tensorboard
+        # TODO: Get working on multi-gpu stuff
         self.writer.add_graph(self.model, iter(self.dataloader).next()[0])
 
         # Load checkpoint if need be
