@@ -9,9 +9,8 @@ from multiprocessing.dummy import Pool as ThreadPool
 class LDA2VecDataset(Dataset):
     BETA = 0.75
 
-    def __init__(self, args, device):
+    def __init__(self, args):
         self.args = args
-        self.device = device
         self.term_freq_dict = dict()
         self.files = self._get_files_in_dir(args.dataset_dir)
         self.examples = []
@@ -233,11 +232,11 @@ class LDA2VecDataset(Dataset):
     def _example_to_tensor(self, example, target):
         center = torch.tensor([
             list(self.term_freq_dict.keys()).index(example[0])
-        ]).to(self.device)
-        doc_id = torch.tensor([example[1]]).to(self.device)
+        ])
+        doc_id = torch.tensor([example[1]])
         target = torch.tensor([
             list(self.term_freq_dict.keys()).index(target)
-        ]).to(self.device)
+        ])
         return ((center, doc_id), target)
 
 

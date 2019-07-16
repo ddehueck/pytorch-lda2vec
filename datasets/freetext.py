@@ -4,8 +4,8 @@ from .dataset import LDA2VecDataset
 
 class FreeTextDataset(LDA2VecDataset):
 
-    def __init__(self, args, device,):
-        LDA2VecDataset.__init__(self, args, device)
+    def __init__(self, args):
+        LDA2VecDataset.__init__(self, args)
         self.generate_examples_multi()
 
     def read_file(self, file):

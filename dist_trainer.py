@@ -32,23 +32,23 @@ class DistTrainer:
         device_ids = list(range(rank * n, (rank + 1) * n))
 
         #setup dataloader
-        dataset = args.dataset(args, "cuda")
+        dataset = self.args.dataset(self.args)
         sampler = DistributedSampler(dataset)
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
-            shuffle=False, sampler=sampler, num_workers=self.args.workers, pin_memory=True)
+            shuffle=False, sampler=sampler, num_workers=self.args.workers)
             
         # create model and move it to device_ids[0]
         model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args).to(device_ids[0])
         # output_device defaults to device_ids[0]
         ddp_model = DDP(model, device_ids=device_ids)
 
-        sgns = SGNSLoss(dataset, ddp_model.module.word_embeds, 'cuda')
+        sgns = SGNSLoss(dataset, ddp_model.module.word_embeds, device_ids[0])
         dirichlet = DirichletLoss()
         optimizer = optim.Adam(ddp_model.parameters(), lr=self.args.lr)
         
         for epoch in range(self.args.epochs):
             print('EPOCH:', epoch)
-            for i, data in tqdm(enumerate(self.dataloader)):
+            for i, data in tqdm(enumerate(dataloader)):
                 # unpack data
                 (center, doc_id), target = data
                 center, doc_id, target = center.to(device_ids[0]), doc_id.to(device_ids[0]), target.to(device_ids[0])
