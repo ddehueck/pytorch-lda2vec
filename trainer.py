@@ -17,7 +17,6 @@ import os
 class Trainer:
 
     def __init__(self, args):
-        print("CCOMINON")
         self.args = args  # Argument parser results
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.saver = Saver(args)
@@ -25,7 +24,7 @@ class Trainer:
         self.logger = Logger(self.saver.save_to_dir).logger
 
         # Load data
-        self.dataset = args.dataset(args, self.device)
+        self.dataset = args.dataset(args)
         self.logger.info("Finished loading dataset")
 
         if args.save_dataset:
@@ -71,6 +70,7 @@ class Trainer:
             for data in tqdm(self.dataloader):
                 # unpack data
                 (center, doc_id), target = data
+                center, doc_id, target = center.to(self.device), doc_id.to(self.device), target.to(self.device)
                 # Remove accumulated gradients
                 self.optim.zero_grad()
                 # Get context vector: word + doc
