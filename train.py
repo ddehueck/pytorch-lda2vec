@@ -1,5 +1,5 @@
 import argparse
-from dist_train import DistTrainer
+from dist_trainer import DistTrainer
 from trainer import Trainer
 from datasets import newsgroups
 from datasets import freetext
