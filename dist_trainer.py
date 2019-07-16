@@ -22,26 +22,27 @@ class DistTrainer:
 
     def __init__(self, args):
         self.args = args
-        self.dataset = args.dataset(args, "cuda")
-        self.sampler = DistributedSampler(self.dataset)
-        self.dataloader = DataLoader(self.dataset, batch_size=args.batch_size,
-            shuffle=False, sampler=self.sampler, num_workers=args.workers, pin_memory=True)
-
         
     def dist_train(self, rank, world_size):
         d_utils.setup(rank, world_size)
-            
+        
         # setup devices for this process, rank 1 uses GPUs [0, 1, 2, 3] and
         # rank 2 uses GPUs [4, 5, 6, 7].
         n = torch.cuda.device_count() // world_size
         device_ids = list(range(rank * n, (rank + 1) * n))
+
+        #setup dataloader
+        dataset = args.dataset(args, "cuda")
+        sampler = DistributedSampler(dataset)
+        dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
+            shuffle=False, sampler=sampler, num_workers=self.args.workers, pin_memory=True)
             
         # create model and move it to device_ids[0]
-        model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), self.args).to(device_ids[0])
+        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args).to(device_ids[0])
         # output_device defaults to device_ids[0]
         ddp_model = DDP(model, device_ids=device_ids)
 
-        sgns = SGNSLoss(self.dataset, ddp_model.module.word_embeds, 'cuda')
+        sgns = SGNSLoss(dataset, ddp_model.module.word_embeds, 'cuda')
         dirichlet = DirichletLoss()
         optimizer = optim.Adam(ddp_model.parameters(), lr=self.args.lr)
         
