@@ -8,6 +8,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from tqdm import tqdm
 from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 import distributed.utils as d_utils
 from model import Lda2vec
 from loss.dirichlet import DirichletLoss
@@ -15,12 +16,16 @@ from loss.sgns import SGNSLoss
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 class DistTrainer:
+    """
+    Following: https://github.com/pytorch/examples/blob/master/imagenet/main.py
+    """
 
     def __init__(self, args):
         self.args = args
         self.dataset = args.dataset(args, "cuda")
+        self.sampler = DistributedSampler(self.dataset)
         self.dataloader = DataLoader(self.dataset, batch_size=args.batch_size,
-            shuffle=True, num_workers=args.workers)
+            shuffle=False, sampler=self.sampler, num_workers=args.workers, pin_memory=True)
 
         
     def dist_train(self, rank, world_size):
@@ -51,9 +56,9 @@ class DistTrainer:
                 # Get context vector: word + doc
                 context = ddp_model((center, doc_id))
                 # Calc loss: SGNS + Dirichlet
-                sgns = sgns(context, ddp_model.module.model.word_embeds(target))
-                diri = dirichlet(ddp_model.module.doc_weights(doc_id))
-                loss = sgns + diri
+                sgns_loss = sgns(context, ddp_model.module.word_embeds(target))
+                diri_loss = dirichlet(ddp_model.module.doc_weights(doc_id))
+                loss = sgns_loss + diri_loss
                 # Backprop and update
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(ddp_model.parameters(), self.args.clip)
