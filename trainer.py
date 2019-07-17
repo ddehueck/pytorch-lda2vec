@@ -37,7 +37,6 @@ class Trainer:
 
         # Load model and training necessities
         self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args)
-        self.model.to(self.device)
 
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
         self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.device)
@@ -63,6 +62,7 @@ class Trainer:
 
     def train(self):
         # TODO: Offload logging data into logger class
+        self.model.to(self.device)
         self.logger.info('Training on device: {}'.format(self.device))
         running_loss, sgns_loss, diri_loss, global_step = 0.0, 0.0, 0.0, 0
         for epoch in range(self.args.epochs):

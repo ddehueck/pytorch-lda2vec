@@ -15,7 +15,7 @@ def get_sparsity_score(vec):
     K = np.prod(np.array(vec.size()))
     uniform_vec = t.tensor([1/K for _ in range(K)]).float()
     max_sparsity = 2 * ((K - 1) / K) 
-    norm_score = sum(abs(vec.float() - uniform_vec.float())) / max_sparsity
+    norm_score = sum(abs(vec.float().to('cpu') - uniform_vec.float())) / max_sparsity
     
     return norm_score.item()
 

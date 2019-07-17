@@ -1,5 +1,6 @@
 import argparse
 from dist_trainer import DistTrainer
+from horovod_trainer import HorovodTrainer
 from trainer import Trainer
 from datasets import newsgroups
 from datasets import freetext
@@ -91,12 +92,16 @@ def main():
     """
     parser.add_argument('--distributed', type=str_to_bool, default=False, help='Boolean to\
                         use distributed data parallel (default: False)')
+    parser.add_argument('--horovod', type=str_to_bool, default=False, help='Boolean to\
+                        use horovod distributed training (default: False)')
     
 
     args = parser.parse_args()
 
     if args.distributed:
         trainer = DistTrainer(args)
+    elif args.horovod:
+        trainer = HorovodTrainer(args)
     else:
         trainer = Trainer(args)
     
