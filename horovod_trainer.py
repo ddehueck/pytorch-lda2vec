@@ -41,21 +41,30 @@ class HorovodTrainer:
         model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args)
         model.cuda()
 
-        sgns = SGNSLoss(dataset, model.module.word_embeds, 'cuda')
+        sgns = SGNSLoss(dataset, model.word_embeds, 'cuda')
         dirichlet = DirichletLoss()
-        optimizer = optim.Adam(model.parameters(), lr=self.args.lr)
 
-        optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
+        #Distributed optimizer
+        optimizer = optim.Adam(model.parameters(), lr=self.args.lr)
         
+        if self.args.compression:
+            compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
+            optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
+            print('Using compression: {}'.format(compression))
+        else:
+            optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
+
         # Broadcast from rank 0 to all other processes
         hvd.broadcast_parameters(model.state_dict(), root_rank=0)
 
+        # Log time
+        begin_time = time.perf_counter()
+        print("Began Training At:", begin_time)
+
         global_step = 0
-        train_time = 0.0
         for epoch in range(self.args.epochs):
             running_loss = 0.0
-            for i, data in enumerate(dataloader):
-                start_time = time.perf_counter()
+            for i, data in tqdm(enumerate(dataloader)):
                 # unpack data
                 (center, doc_id), target = data
                 center, doc_id, target = center.cuda(), doc_id.cuda(), target.cuda()
@@ -64,21 +73,23 @@ class HorovodTrainer:
                 # Get context vector: word + doc
                 context = model((center, doc_id))
                 # Calc loss: SGNS + Dirichlet
-                sgns_loss = sgns(context, model.module.word_embeds(target))
-                diri_loss = dirichlet(model.module.doc_weights(doc_id))
+                sgns_loss = sgns(context, model.word_embeds(target))
+                diri_loss = dirichlet(model.doc_weights(doc_id))
                 loss = sgns_loss + diri_loss
                 # Backprop and update
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), self.args.clip)
                 optimizer.step()
-                end_time = time.perf_counter()
                 
                 global_step += 1
                 running_loss += loss
-                train_time += end_time - start_time
                 if global_step % self.args.log_step == 0:
                     norm = (i + 1) * self.args.batch_size
-                    print('EPOCH: {} | STEP: {} | SPEED: {} (ms/batch) | LOSS {}'.format(
-                        epoch, global_step, train_time/global_step, 
-                        running_loss/norm
+                    print('EPOCH: {} | STEP: {} | LOSS {}'.format(
+                        epoch, global_step, running_loss/norm
                     ))
+
+        # Log time
+        end_time = time.perf_counter()
+        print("Ended Training At:", end_time)
+        print("Training Lasted: {} ms".format(end_time - begin_time))
