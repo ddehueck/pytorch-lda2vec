@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 import torch.distributed as dist
 import torch.nn as nn
@@ -46,9 +47,12 @@ class DistTrainer:
         dirichlet = DirichletLoss()
         optimizer = optim.Adam(ddp_model.parameters(), lr=self.args.lr)
         
+        global_step = 0
+        train_time = 0.0
         for epoch in range(self.args.epochs):
-            print('EPOCH:', epoch)
-            for i, data in tqdm(enumerate(dataloader)):
+            running_loss = 0.0
+            for i, data in enumerate(dataloader):
+                start_time = time.perf_counter()
                 # unpack data
                 (center, doc_id), target = data
                 center, doc_id, target = center.to(device_ids[0]), doc_id.to(device_ids[0]), target.to(device_ids[0])
@@ -64,6 +68,18 @@ class DistTrainer:
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(ddp_model.parameters(), self.args.clip)
                 optimizer.step()
+                end_time = time.perf_counter()
+                
+                global_step += 1
+                running_loss += loss
+                train_time += end_time - start_time
+                if global_step % self.args.log_step == 0:
+                    norm = (i + 1) * self.args.batch_size
+                    print('DEVICE: {} | EPOCH: {} | STEP: {} | SPEED: {} (ms/batch) | LOSS {}'.format(
+                        device_ids[0], epoch, global_step, train_time/global_step, 
+                        running_loss/norm
+                    ))
+
 
         d_utils.cleanup()
 
