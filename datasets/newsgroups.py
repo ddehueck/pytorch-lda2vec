@@ -1,5 +1,6 @@
 from sklearn.datasets import fetch_20newsgroups
 from .dataset import LDA2VecDataset
+import json
 
 
 class NewsgroupsDataset(LDA2VecDataset):

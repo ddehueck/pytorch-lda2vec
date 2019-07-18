@@ -3,26 +3,21 @@ import argparse
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from model import Lda2vec
 from loss.dirichlet import DirichletLoss
 from loss.sgns import SGNSLoss
-from saver import Saver
-from logger import Logger
 import utils
 from tqdm import tqdm
 import numpy as np
 import os
+from .trainer import LDA2VecTrainer
 
-class Trainer:
+class Trainer(LDA2VecTrainer):
 
     def __init__(self, args):
-        self.args = args  # Argument parser results
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.saver = Saver(args)
-        self.writer = SummaryWriter(log_dir=self.saver.save_to_dir, flush_secs=3)
-        self.logger = Logger(self.saver.save_to_dir).logger
+        LDA2VecTrainer.__init__(self, args)
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # Load data
         self.dataset = args.dataset(args)
         self.logger.info("Finished loading dataset")

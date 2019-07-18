@@ -1,7 +1,7 @@
 import argparse
-from dist_trainer import DistTrainer
-from horovod_trainer import HorovodTrainer
-from trainer import Trainer
+from trainers.dist_trainer import DistTrainer
+from trainers.horovod_trainer import HorovodTrainer
+from trainers.standard_trainer import Trainer
 from datasets import newsgroups
 from datasets import freetext
 
@@ -86,6 +86,10 @@ def main():
                         help='Put the path to checkpoint file to resume training')
     parser.add_argument('--check_dir', type=str, default='experiments/',
                         help='Set the checkpoint directory name')
+    parser.add_argument('--stream-log', type=str_to_bool, default=True,
+                        help='Boolean to stream log output to console.')
+    parser.add_argument('--save-log', type=str_to_bool, default=True,
+                        help='Boolean to save log output to a file.')
 
     """
     Training Settings
