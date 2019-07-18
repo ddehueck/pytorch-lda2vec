@@ -94,8 +94,8 @@ def main():
                         use distributed data parallel (default: False)')
     parser.add_argument('--horovod', type=str_to_bool, default=False, help='Boolean to\
                         use horovod distributed training (default: False)')
-    parser.add_argument('--compression', type=str_to_bool, default=False, help='Boolean to\
-                        use fp16 compression horovod distributed training (default: False)')
+    parser.add_argument('--compression', type=str_to_bool, default=True, help='Boolean to\
+                        use fp16 compression horovod distributed training (default: True)')
 
     args = parser.parse_args()
 

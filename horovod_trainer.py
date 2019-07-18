@@ -14,7 +14,7 @@ import horovod.torch as hvd
 
 class HorovodTrainer:
     """
-    Following: https://github.com/pytorch/examples/blob/master/imagenet/main.py
+    Following: https://github.com/horovod/horovod/blob/master/examples/pytorch_mnist.py 
     """
 
     def __init__(self, args):
@@ -46,13 +46,12 @@ class HorovodTrainer:
         hvd.broadcast_parameters(model.state_dict(), root_rank=0)
         hvd.broadcast_optimizer_state(optimizer, root_rank=0)
 
+        compression = hvd.Compression.fp16 if self.args.compression else hvd.Compression.none
+        optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
+        
         if self.args.compression:
-            compression = hvd.Compression.fp16
-            optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
             print('Using compression: {}'.format(compression))
-        else:
-            optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
-
+        
         # Log time
         begin_time = time.perf_counter()
         print("Began Training At:", begin_time)
@@ -63,7 +62,7 @@ class HorovodTrainer:
             running_loss = 0.0
             for i, data in enumerate(dataloader):
                 # unpack data
-                (center, doc_id), target = data
+                (center, doc_id), target = data             
                 center, doc_id, target = center.cuda(), doc_id.cuda(), target.cuda()
                 # Remove accumulated gradients
                 optimizer.zero_grad()
