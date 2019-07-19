@@ -1,0 +1,16 @@
+host: test.thoth-station.ninja
+tls_verify: true
+requirements_format: pipenv
+
+runtime_environments:
+  - name: 'rhel:7.7'
+    operating_system:
+      name: 'rhel'
+      version: '7.7'
+    hardware: 
+      cpu_family: '6'
+      cpu_model: '79'
+    python_version: '3.7'
+    cuda_version: '10.1' 
+    recommendation_type: stable 
+    limit_latest_versions: null
