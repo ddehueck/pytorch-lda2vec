@@ -14,6 +14,8 @@ import horovod.torch as hvd
 from .trainer import LDA2VecTrainer
 import numpy as np
 import utils
+from collections import Counter
+
 
 class HorovodTrainer:
     """
@@ -88,7 +90,7 @@ class HorovodTrainer:
                         norm = (i + 1) * self.args.batch_size
                         time_since = time.perf_counter() - begin_time
                         train_loss = running_loss/norm
-                        self.log_step(model, epoch, time_since, train_loss, doc_id, center)
+                        self.log_step(model, epoch, time_since, global_step, train_loss, doc_id, center)
 
             # Log and save only rank 0 GPU results
             if hvd.rank() == 0:
@@ -142,4 +144,8 @@ class HorovodTrainer:
         self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
 
         _, max_indices = torch.max(proportions, dim=1)
-        self.logger.info(f'\nMAXIMUM TOPICS AT INDICES: {list(max_indices.numpy())}\n')
+        max_indices = list(max_indices.cpu().numpy())
+        max_counter = Counter(max_indices)
+        
+        self.logger.info(f'\nMAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
+        self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')
