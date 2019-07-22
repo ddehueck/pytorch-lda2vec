@@ -94,12 +94,12 @@ class HorovodTrainer:
 
             # Log and save only rank 0 GPU results
             if hvd.rank() == 0:
-                self.log_and_save_epoch(model, optimizer, epoch, dataset)
+                self.log_and_save_epoch(model, optimizer, epoch, dataset, loss)
 
         # Finished - close writer
         self.writer.close()
 
-    def log_and_save_epoch(self, model, optim, epoch, dataset):
+    def log_and_save_epoch(self, model, optim, epoch, dataset, loss):
 
        # Visualize document embeddings
         self.writer.add_embedding(
