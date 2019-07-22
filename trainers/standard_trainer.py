@@ -118,8 +118,7 @@ class Trainer(LDA2VecTrainer):
             self.writer.add_embedding(
                 self.model.get_doc_vectors(),
                 global_step=epoch,
-                tag='DEs',
-                metadata=list(self.dataset.idx2doc.values())
+                tag=f'de_epoch_{epoch}',
             )
 
             # Save checkpoint

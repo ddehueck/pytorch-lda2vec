@@ -105,8 +105,7 @@ class HorovodTrainer:
         self.writer.add_embedding(
             model.get_doc_vectors(),
             global_step=epoch,
-            tag='DEs',
-            metadata=list(dataset.idx2doc.values())
+            tag=f'de_epoch_{epoch}',
         )
 
         # Save checkpoint
