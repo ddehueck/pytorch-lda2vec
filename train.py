@@ -105,11 +105,15 @@ def main():
 
     args = parser.parse_args()
 
+    # Import with call to trainer to avoid distributed requirments in some cases
     if args.distributed:
+        from trainers.dist_trainer import DistTrainer
         trainer = DistTrainer(args)
     elif args.horovod:
+        from trainers.horovod_trainer import HorovodTrainer
         trainer = HorovodTrainer(args)
     else:
+        from trainers.standard_trainer import Trainer
         trainer = Trainer(args)
     
     # Begin Training!
