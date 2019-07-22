@@ -1,7 +1,4 @@
 import argparse
-from trainers.dist_trainer import DistTrainer
-from trainers.horovod_trainer import HorovodTrainer
-from trainers.standard_trainer import Trainer
 from datasets import newsgroups
 from datasets import freetext
 
