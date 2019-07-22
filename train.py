@@ -46,6 +46,8 @@ def main():
     parser.add_argument('--file-batch-size', type=int, default=250, help='Batch size\
                         used when mult-threading the generation of training examples\
                         (default: 250)')
+    parser.add_argument('--toy', type=str_to_bool, default=False, help='Boolean to \
+                        use just 5 files as a toy dataset or testing (default: False)')
 
     """
     Model Parameters

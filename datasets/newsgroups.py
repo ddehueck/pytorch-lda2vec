@@ -20,6 +20,11 @@ class NewsgroupsDataset(LDA2VecDataset):
         """
         newsgroups_data = fetch_20newsgroups(subset='train', remove=('headers', 'footers'))
         print('\nUsing cleaned newsgroups data from scklearn...')
+        
+        if self.args.toy:
+            # Turn into a toy dataset
+            return newsgroups_data['data'][:5]
+
         return newsgroups_data['data']
 
     def read_file(self, file):
