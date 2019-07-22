@@ -1,5 +1,5 @@
 host: test.thoth-station.ninja
-tls_verify: true
+tls_verify: false
 requirements_format: pipenv
 
 runtime_environments:
@@ -12,5 +12,5 @@ runtime_environments:
       cpu_model: '79'
     python_version: '3.7'
     cuda_version: '10.1' 
-    recommendation_type: stable 
-    limit_latest_versions: null
+recommendation_type: stable 
+limit_latest_versions: null

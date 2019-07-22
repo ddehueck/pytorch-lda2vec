@@ -17,6 +17,10 @@ class LDA2VecDataset(Dataset):
         self.n_examples = 0
         self.idx2doc = dict()
 
+        if args.toy:
+            # Turn into a toy dataset
+            self.files = self.files[:5]
+
     def __getitem__(self, index):
         return self._example_to_tensor(*self.examples[index])
 
