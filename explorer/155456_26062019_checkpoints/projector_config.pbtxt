@@ -1,4 +1,0 @@
-embeddings {
-tensor_name: "Document Proportion Embeddings:00000"
-tensor_path: "00000/Document Proportion Embeddings/tensors.tsv"
-}

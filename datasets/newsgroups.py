@@ -1,5 +1,6 @@
 from sklearn.datasets import fetch_20newsgroups
 from .dataset import LDA2VecDataset
+from .preprocess import Tokenizer
 import json
 
 
@@ -8,6 +9,7 @@ class NewsgroupsDataset(LDA2VecDataset):
     def __init__(self, args):
         LDA2VecDataset.__init__(self, args)
         self.files = self.read_files_from_scikit()
+        self.tokenizer = Tokenizer(custom_stop=['article', 'writes'])
         self.generate_examples_multi()
 
     def read_files_from_scikit(self):
@@ -19,12 +21,12 @@ class NewsgroupsDataset(LDA2VecDataset):
         :returns: List of documents as strings
         """
         newsgroups_data = fetch_20newsgroups(subset='train', remove=('headers', 'footers'))
-        print('\nUsing cleaned newsgroups data from scklearn...')
-        
+        print('Using cleaned newsgroups data from scklearn...')
+    
         if self.args.toy:
-            # Turn into a toy dataset
+            # Turns into a toy dataset
             return newsgroups_data['data'][:5]
-
+            
         return newsgroups_data['data']
 
     def read_file(self, file):

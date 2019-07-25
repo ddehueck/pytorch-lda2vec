@@ -3,7 +3,7 @@ import torch
 import multiprocessing
 from tqdm import tqdm
 from torch.utils.data.dataset import Dataset
-from nltk.tokenize import word_tokenize
+from .preprocess import Tokenizer
 from multiprocessing.dummy import Pool as ThreadPool
 
 class LDA2VecDataset(Dataset):
@@ -13,9 +13,14 @@ class LDA2VecDataset(Dataset):
         self.args = args
         self.term_freq_dict = dict()
         self.files = self._get_files_in_dir(args.dataset_dir)
+        self.tokenizer = Tokenizer()
         self.examples = []
         self.n_examples = 0
         self.idx2doc = dict()
+
+        if self.args.toy:
+            # Turns into a toy dataset
+            self.file = self.files[:5]
 
     def __getitem__(self, index):
         return self._example_to_tensor(*self.examples[index])
@@ -36,25 +41,6 @@ class LDA2VecDataset(Dataset):
         # Needs to be implemented by child class
         raise NotImplementedError
 
-    def _tokenize_doc(self, doc_str):
-        """
-        Tokenize Document
-
-        Converts a document string into a list of tokens.
-
-        :params doc_str: String representation of a document
-        :returns: A list of tokens
-        """
-
-        tokenized = []
-        for token in word_tokenize(doc_str):
-            for c in token:
-                # Only accept tokens with alphanumeric values present
-                if c.isalnum():
-                    tokenized.append(token)
-                    break
-        return tokenized
-
 
     def generate_examples_from_file(self, file, tf_dict):
         """
@@ -69,7 +55,11 @@ class LDA2VecDataset(Dataset):
         self.idx2doc[str(doc_id)] = filename
 
         doc_str = self.read_file(file)
-        tokenized_doc = word_tokenize(doc_str)
+        try:
+            tokenized_doc = self.tokenizer.tokenize_doc(doc_str)
+        except Exception as e:
+            print(doc_str)
+            raise Exception(e)
 
         examples = []
         for i, token in enumerate(tokenized_doc):
