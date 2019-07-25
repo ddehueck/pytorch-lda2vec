@@ -32,7 +32,6 @@ class Trainer(LDA2VecTrainer):
 
         # Load model and training necessities
         self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args)
-
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
         self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.device)
         self.dirichlet = DirichletLoss()

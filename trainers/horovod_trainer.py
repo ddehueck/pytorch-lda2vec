@@ -64,7 +64,7 @@ class HorovodTrainer:
 
         global_step = 0
         for epoch in range(self.args.epochs):
-            running_loss = 0.0
+            running_diri_loss, running_sgns_loss = 0.0, 0.0
             for i, data in enumerate(dataloader):
                 # unpack data
                 (center, doc_id), target = data             
@@ -85,12 +85,13 @@ class HorovodTrainer:
                 # Log only rank 0 GPU results
                 if hvd.rank() == 0:
                     global_step += 1
-                    running_loss += loss
+                    running_sgns_loss += sgns_loss
+                    running_diri_loss += diri_loss
                     if global_step % self.args.log_step == 0:
                         norm = (i + 1) * self.args.batch_size
-                        time_since = time.perf_counter() - begin_time
-                        train_loss = running_loss/norm
-                        self.log_step(model, epoch, time_since, global_step, train_loss, doc_id, center)
+                        time_per_batch = (time.perf_counter() - begin_time)/global_step
+                        self.log_step(model, epoch, time_per_batch, global_step, 
+                        running_diri_loss/norm, running_sgns_loss/norm, doc_id, center)
 
             # Log and save only rank 0 GPU results
             if hvd.rank() == 0:
@@ -119,18 +120,20 @@ class HorovodTrainer:
         self.logger.info(f'Finished saving checkpoint')
 
 
-    def log_step(self, model, epoch, time, global_step, train_loss, doc_id, center):
-        self.logger.info(f'\n\n#####################################################################')
-        self.logger.info(f'EPOCH: {epoch} | STEP: {global_step} | TIME: {time} | LOSS {train_loss}')
-        self.logger.info(f'#####################################################################\n\n')
+    def log_step(self, model, epoch, time, global_step, diri_loss, sgns_loss, doc_id, center):
+        self.logger.info(f'\##################################################################################')
+        self.logger.info(f'EPOCH: {epoch} | STEP: {global_step} | TIME: {time} (s/batch) | LOSS {diri_loss+sgns_loss}')
+        self.logger.info(f'##################################################################################\n\n')
         # Log loss
-        self.writer.add_scalar('train_loss', train_loss, global_step)
+        self.writer.add_scalar('train_loss', diri_loss + sgns_loss, global_step)
+        self.writer.add_scalar('diri_loss', diri_loss, global_step)
+        self.writer.add_scalar('sgns_loss', sgns_loss, global_step)
         
         # Log gradients - index select to only view gradients of embeddings in batch
-        self.logger.info(f'\nDOCUMENT WEIGHT GRADIENTS:\n\
+        self.logger.info(f'DOCUMENT WEIGHT GRADIENTS:\n\
             {torch.index_select(model.doc_weights.weight.grad, 0, doc_id.squeeze())}')
         
-        self.logger.info(f'\nWORD EMBEDDING GRADIENTS:\n\
+        self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
             {torch.index_select(model.word_embeds.weight.grad, 0, center.squeeze())}')
 
         # Log document weights - check for sparsity
@@ -138,13 +141,13 @@ class HorovodTrainer:
         proportions = F.softmax(doc_weights, dim=1)
         avg_s_score = np.mean([utils.get_sparsity_score(p) for p in proportions])
 
-        self.logger.info(f'\nDOCUMENT PROPORTIIONS:\n {proportions}')    
-        self.logger.info(f'\nAVERAGE SPARSITY SCORE: {avg_s_score}\n')   
+        self.logger.info(f'DOCUMENT PROPORTIIONS:\n {proportions}')    
+        self.logger.info(f'AVERAGE SPARSITY SCORE: {avg_s_score}\n')   
         self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
 
         _, max_indices = torch.max(proportions, dim=1)
         max_indices = list(max_indices.cpu().numpy())
         max_counter = Counter(max_indices)
         
-        self.logger.info(f'\nMAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
+        self.logger.info(f'MAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
         self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')
