@@ -19,7 +19,7 @@ class Saver:
                 ret += k + '=' + str(vars(args)[k]) + '\n'
             f.write(ret)
 
-        # Create a .sh script to run tensorboard to avoid typing weird dir name
+        # Create a shell script to run tensorboard to avoid typing weird dir name
         with open(self.save_to_dir + 'tensorboard.sh', 'w') as f:
             f.write('tensorboard --logdir=../' +
                     self.save_to_dir.replace(args.check_dir, ''))
@@ -42,9 +42,9 @@ class Saver:
         :param dataset: An LDA2VecDataset object
         :returns: None
         """
-        self.save_state({'dataset': {
+        self.save_state({
             'examples': dataset.examples,
             'idx2doc': dataset.idx2doc,
             'term_freq_dict': dataset.term_freq_dict
-        }}, 'dataset.pth')
+        }, 'dataset.pth')
 

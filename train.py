@@ -23,7 +23,7 @@ def str_to_dataset(arg):
         raise argparse.ArgumentTypeError('No dataset found by the name:', arg)
 
 
-def main():
+def get_args():
     parser = argparse.ArgumentParser(description="PyTorch LDA2Vec Training")
 
     """
@@ -100,7 +100,16 @@ def main():
     parser.add_argument('--compression', type=str_to_bool, default=True, help='Boolean to\
                         use fp16 compression horovod distributed training (default: True)')
 
-    args = parser.parse_args()
+    """
+    Jupyter Notebook Argumenet
+    """
+    parser.add_argument('-f', type=str, help='Jupyter Notebook Argument - file')
+
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = get_args()
 
     # Import with call to trainer to avoid distributed requirments in some cases
     if args.distributed:
@@ -115,7 +124,3 @@ def main():
     
     # Begin Training!
     trainer.train()
-
-
-if __name__ == '__main__':
-    main()

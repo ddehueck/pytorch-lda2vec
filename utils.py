@@ -18,4 +18,3 @@ def get_sparsity_score(vec):
     norm_score = sum(abs(vec.float().to('cpu') - uniform_vec.float())) / max_sparsity
     
     return norm_score.item()
-

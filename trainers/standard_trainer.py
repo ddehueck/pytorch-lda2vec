@@ -36,6 +36,15 @@ class Trainer(LDA2VecTrainer):
         self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.device)
         self.dirichlet = DirichletLoss()
 
+        # Visualize RANDOM document embeddings
+        print('Adding random embeddings')
+        self.writer.add_embedding(
+            self.model.get_doc_vectors(),
+            global_step=0,
+            tag=f'de_epoch_random',
+        )
+        print('Finished adding random embeddings!')
+
         # Add graph to tensorboard
         # TODO: Get working on multi-gpu stuff
         self.writer.add_graph(self.model, iter(self.dataloader).next()[0])
