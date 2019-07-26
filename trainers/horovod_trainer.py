@@ -64,7 +64,9 @@ class HorovodTrainer:
 
         global_step = 0
         for epoch in range(self.args.epochs):
+            sampler.set_epoch(epoch)
             running_diri_loss, running_sgns_loss = 0.0, 0.0
+            self.logger.info(f'GPU:{hvd.rank()} has {len(dataloader)} batches.')
             for i, data in enumerate(dataloader):
                 # unpack data
                 (center, doc_id), target = data             
