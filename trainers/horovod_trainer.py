@@ -45,13 +45,24 @@ class HorovodTrainer:
 
         #Distributed optimizer
         optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())
+        compression = hvd.Compression.fp16 if self.args.compression else hvd.Compression.none
+        optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
+
+        if self.args.resume is not None:
+            self.logger.info('Loaded checkpoint {}'.format(self.args.resume))
+            if not os.path.isfile(self.args.resume):
+                raise Exception("There was no checkpoint found at '{}'" .format(self.args.resume))
+            
+            checkpoint = torch.load(self.args.resume)
+            self.begin_epoch = checkpoint['epoch']  # Already added 1 when saving
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+            self.logger.info('Loaded checkpoint {} at epoch {}'.format(self.args.resume, checkpoint['epoch']))
        
        # Broadcast from rank 0 to all other processes
         hvd.broadcast_parameters(model.state_dict(), root_rank=0)
         hvd.broadcast_optimizer_state(optimizer, root_rank=0)
-
-        compression = hvd.Compression.fp16 if self.args.compression else hvd.Compression.none
-        optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
         
         # Log on rank 0 GPU
         if hvd.rank() == 0:
@@ -63,7 +74,7 @@ class HorovodTrainer:
                 self.logger.info(f'Using compression: {compression}')
 
         global_step = 0
-        for epoch in range(self.args.epochs):
+        for epoch in range(self.begin_epoch, self.args.epochs):
             sampler.set_epoch(epoch)
             running_diri_loss, running_sgns_loss = 0.0, 0.0
             self.logger.info(f'GPU:{hvd.rank()} has {len(dataloader)} batches.')

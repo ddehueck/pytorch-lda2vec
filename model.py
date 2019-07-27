@@ -1,6 +1,8 @@
 import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions.uniform import Uniform
+
 
 class Lda2vec(nn.Module):
 
@@ -8,8 +10,17 @@ class Lda2vec(nn.Module):
         super(Lda2vec, self).__init__()
         self.args = args
         self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
-        self.doc_weights = nn.Embedding(num_docs, args.num_topics)
         self.topic_embeds = nn.Parameter(t.randn((args.embedding_len, args.num_topics)), requires_grad=True)
+
+        if args.uni_doc_init:
+             # Sample from a uniform distribution betwen ~[-sqrt(3), +sqrt(3)]
+             # sqrt(3) chosen from goodfellow's initialization
+            uni = Uniform(-1.732, 1.732).sample((num_docs, args.num_topics))
+            self.doc_weights = nn.Embedding.from_pretrained(uni)
+            print(self.doc_weights.weight)
+        else:
+            self.doc_weights = nn.Embedding(num_docs, args.num_topics)
+
         # Reqularization Layers
         self.dropout = nn.Dropout(p=0.5)
         self.batchnorm = nn.BatchNorm1d(args.embedding_len)

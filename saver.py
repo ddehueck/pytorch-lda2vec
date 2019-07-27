@@ -8,6 +8,10 @@ class Saver:
         self.save_to_dir = args.check_dir + \
         dt.datetime.now().strftime("%H%M%S_%d%m%Y") + '_checkpoints/'
 
+        # Use same experiment file if resuming
+        if args.resume is not None:
+            self.save_to_dir = args.resume.replace(os.path.basename(args.resume), '')
+
         # Create save to directory
         if not os.path.exists(self.save_to_dir):
             os.makedirs(self.save_to_dir)

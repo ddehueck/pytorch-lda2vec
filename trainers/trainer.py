@@ -9,6 +9,7 @@ class LDA2VecTrainer:
         self.saver = Saver(args)
         self.writer = SummaryWriter(log_dir=self.saver.save_to_dir, flush_secs=3)
         self.logger = Logger(self.saver.save_to_dir, args).logger
+        self.begin_epoch = 0
 
 
     def train(self):

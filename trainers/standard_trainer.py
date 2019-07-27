@@ -56,7 +56,7 @@ class Trainer(LDA2VecTrainer):
                 raise Exception("There was no checkpoint found at '{}'" .format(args.resume))
             
             checkpoint = torch.load(args.resume)
-            self.args.epochs -= checkpoint['epoch']
+            self.begin_epoch = checkpoint['epoch']  # Already added 1 when saving
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.optim.load_state_dict(checkpoint['optimizer_state_dict'])
 
@@ -68,7 +68,7 @@ class Trainer(LDA2VecTrainer):
         self.model.to(self.device)
         self.logger.info('Training on device: {}'.format(self.device))
         running_loss, sgns_loss, diri_loss, global_step = 0.0, 0.0, 0.0, 0
-        for epoch in range(self.args.epochs):
+        for epoch in range(self.begin_epoch, self.args.epochs):
             self.logger.info('Beginning epoch: {}/{}'.format(epoch+1, self.args.epochs))
             for data in tqdm(self.dataloader):
                 # unpack data
