@@ -28,46 +28,48 @@ class HorovodTrainer(LDA2VecTrainer):
     def train(self):
         # Initialize Horovod
         hvd.init()
+
         # Pin GPU to be used to process local rank (one GPU per process)
         torch.cuda.set_device(hvd.local_rank())
+        torch.cuda.manual_seed(self.args.seed)
 
         # Setup dataloader with a distributed sampler
         dataset = self.args.dataset(self.args)
         sampler = DistributedSampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
-            shuffle=False, sampler=sampler, num_workers=self.args.workers)
+            shuffle=True, sampler=sampler, num_workers=self.args.workers, pin_memory=True)
 
         if self.args.save_dataset:
             self.logger.info("Beginning to save dataset.")
             self.saver.save_dataset(dataset)
             self.logger.info("Finished saving dataset")
             
-        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args)
-        model.cuda()
-
-        sgns = SGNSLoss(dataset, model.word_embeds, 'cuda')
-        dirichlet = DirichletLoss(self.args)
-
-        #Distributed optimizer
+        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args).cuda()
         optimizer = optim.Adam(model.parameters(), lr=self.args.lr)
+       
+        # Broadcast from rank 0 to all other processes
+        hvd.broadcast_parameters(model.state_dict(), root_rank=0)
+        hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+
+        # Distribute Optimizer
         compression = hvd.Compression.fp16 if self.args.compression else hvd.Compression.none
         optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
 
+        # Set up losses
+        sgns = SGNSLoss(dataset, model.word_embeds, 'cuda')
+        dirichlet = DirichletLoss(self.args)
+
         if self.args.resume is not None:
-            self.logger.info('Loaded checkpoint {}'.format(self.args.resume))
+            self.logger.info(f'Loading checkpoint {self.args.resumer}')
             if not os.path.isfile(self.args.resume):
-                raise Exception("There was no checkpoint found at '{}'" .format(self.args.resume))
-            
+                raise Exception(f'There was no checkpoint found at {self.args.resum}')
+
             checkpoint = torch.load(self.args.resume)
             self.begin_epoch = checkpoint['epoch']  # Already added 1 when saving
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-            self.logger.info('Loaded checkpoint {} at epoch {}'.format(self.args.resume, checkpoint['epoch']))
-       
-       # Broadcast from rank 0 to all other processes
-        hvd.broadcast_parameters(model.state_dict(), root_rank=0)
-        hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+            self.logger.info(f"Loaded checkpoint {self.args.resume} at epoch {checkpoint['epoch']}")
         
         # Log on rank 0 GPU
         if hvd.rank() == 0:
