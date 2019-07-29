@@ -17,7 +17,7 @@ import utils
 from collections import Counter
 
 
-class HorovodTrainer:
+class HorovodTrainer(LDA2VecTrainer):
     """
     Following: https://github.com/horovod/horovod/blob/master/examples/pytorch_mnist.py 
     """
@@ -41,7 +41,7 @@ class HorovodTrainer:
         model.cuda()
 
         sgns = SGNSLoss(dataset, model.word_embeds, 'cuda')
-        dirichlet = DirichletLoss()
+        dirichlet = DirichletLoss(self.args)
 
         #Distributed optimizer
         optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())

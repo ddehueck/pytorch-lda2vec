@@ -38,7 +38,7 @@ class SGNSLoss(nn.Module):
             # self.NUM_SAMPLES. 
             sample = self.get_unigram_sample()
             dot = (torch.neg(context) * sample).sum(-1)
-            log_samples.append(torch.log(torch.sigmoid(dot).clamp(self.BETA)))
+            log_samples.append(torch.log(torch.sigmoid(dot).clamp(self.EPSILON)))
 
         log_samples = torch.stack(log_samples).sum(0)
         return torch.add(log_targets, log_samples).sum()  # A loss should return a single value

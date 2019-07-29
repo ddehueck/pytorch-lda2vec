@@ -56,6 +56,8 @@ def get_args():
     parser.add_argument('--uni-doc-init', type=str_to_bool, default=False, help='Have doc\
                         weights be uniformaly distributed to counteract initial undefined\
                          topic structure - experimental (default: False)')
+    parser.add_argument('--lambda-val', type=int, default=100, help='Balancing parameter\
+                        for dirichlet loss value (default: 100)')
     
     """
     Training Hyperparameters

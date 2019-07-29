@@ -17,7 +17,6 @@ class Lda2vec(nn.Module):
              # sqrt(3) chosen from goodfellow's initialization
             uni = Uniform(-1.732, 1.732).sample((num_docs, args.num_topics))
             self.doc_weights = nn.Embedding.from_pretrained(uni)
-            print(self.doc_weights.weight)
         else:
             self.doc_weights = nn.Embedding(num_docs, args.num_topics)
 

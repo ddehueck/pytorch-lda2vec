@@ -1,14 +1,15 @@
-import torch
+import torch as t
 import torch.nn.functional as F
 import torch.nn as nn
 
 class DirichletLoss(nn.Module):
-    LAMBDA = 1
-    ALPHA = 1 / 64  # 1 / number of topics
-
-    def __init__(self):
+    
+    def __init__(self, args):
         super(DirichletLoss, self).__init__()
+        self.alpha = 1 / args.num_topics
+        self.lambda_val = args.lambda_val
 
     def forward(self, doc_weights):
         proportions = F.softmax(doc_weights, dim=0)
-        return -self.LAMBDA * (self.ALPHA - 1) * torch.sum(torch.log(proportions))
+        avg_log_proportion = t.sum(t.log(proportions), dim=2).mean()
+        return -self.lambda_val * (self.alpha - 1) * avg_log_proportion

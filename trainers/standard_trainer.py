@@ -34,7 +34,7 @@ class Trainer(LDA2VecTrainer):
         self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args)
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
         self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.device)
-        self.dirichlet = DirichletLoss()
+        self.dirichlet = DirichletLoss(self.args)
 
         # Visualize RANDOM document embeddings
         print('Adding random embeddings')
@@ -77,10 +77,10 @@ class Trainer(LDA2VecTrainer):
                 # Remove accumulated gradients
                 self.optim.zero_grad()
                 # Get context vector: word + doc
-                context = self.model((center, doc_id))
+                context = self.model((center, doc_id))  # context - [batch_size x embed_len x 1]
                 # Calc loss: SGNS + Dirichlet
-                sgns = self.sgns(context, self.model.word_embeds(target))
-                diri = self.dirichlet(self.model.doc_weights(doc_id))
+                sgns = self.sgns(context, self.model.word_embeds(target))  # target - [batch_size x 1]
+                diri = self.dirichlet(self.model.doc_weights(doc_id))  # doc_id - [batch_size x 1]
                 loss = sgns + diri
                # Backprop and update
                 loss.backward()
