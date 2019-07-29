@@ -24,6 +24,7 @@ def str_to_dataset(arg):
 
 
 def get_args():
+    # TODO: Turn some boolean flags into just flag or no flag
     parser = argparse.ArgumentParser(description="PyTorch LDA2Vec Training")
 
     """

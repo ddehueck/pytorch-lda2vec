@@ -14,7 +14,7 @@ class Lda2vec(nn.Module):
 
         if args.uni_doc_init:
              # Sample from a uniform distribution betwen ~[-sqrt(3), +sqrt(3)]
-             # sqrt(3) chosen from goodfellow's initialization
+             # sqrt(3) chosen from goodfellow's GAN initialization
             uni = Uniform(-1.732, 1.732).sample((num_docs, args.num_topics))
             self.doc_weights = nn.Embedding.from_pretrained(uni)
         else:
