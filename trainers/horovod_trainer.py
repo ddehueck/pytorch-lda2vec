@@ -31,11 +31,16 @@ class HorovodTrainer(LDA2VecTrainer):
         # Pin GPU to be used to process local rank (one GPU per process)
         torch.cuda.set_device(hvd.local_rank())
 
-        #setup dataloader
+        # Setup dataloader with a distributed sampler
         dataset = self.args.dataset(self.args)
         sampler = DistributedSampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
             shuffle=False, sampler=sampler, num_workers=self.args.workers)
+
+        if args.save_dataset:
+            self.logger.info("Beginning to save dataset.")
+            self.saver.save_dataset(self.dataset)
+            self.logger.info("Finished saving dataset")
             
         model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args)
         model.cuda()
@@ -44,7 +49,7 @@ class HorovodTrainer(LDA2VecTrainer):
         dirichlet = DirichletLoss(self.args)
 
         #Distributed optimizer
-        optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())
+        optimizer = optim.Adam(model.parameters(), lr=self.args.lr)
         compression = hvd.Compression.fp16 if self.args.compression else hvd.Compression.none
         optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
 
