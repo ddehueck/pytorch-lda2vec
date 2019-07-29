@@ -37,9 +37,9 @@ class HorovodTrainer(LDA2VecTrainer):
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
             shuffle=False, sampler=sampler, num_workers=self.args.workers)
 
-        if args.save_dataset:
+        if self.args.save_dataset:
             self.logger.info("Beginning to save dataset.")
-            self.saver.save_dataset(self.dataset)
+            self.saver.save_dataset(dataset)
             self.logger.info("Finished saving dataset")
             
         model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args)
