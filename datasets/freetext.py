@@ -1,3 +1,4 @@
+import torch
 import ujson
 from .dataset import LDA2VecDataset
 
@@ -6,7 +7,20 @@ class FreeTextDataset(LDA2VecDataset):
 
     def __init__(self, args):
         LDA2VecDataset.__init__(self, args)
-        self.generate_examples_multi()
+
+        if args.load_dataset is not None:
+            # Load dataset from .pth file
+            dataset = torch.load(args.load_dataset)
+
+            # Load Dataset Object
+            self.examples = dataset['examples']
+            self.idx2doc = dataset['idx2doc']
+            self.term_freq_dict = dataset['term_freq_dict']
+
+            # Already saved
+            args.save_dataset = False
+        else:    
+            self.generate_examples_multi()
 
     def read_file(self, file):
         """

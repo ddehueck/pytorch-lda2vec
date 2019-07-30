@@ -95,18 +95,18 @@ class HorovodTrainer(LDA2VecTrainer):
                 context = model((center, doc_id))
                 # Calc loss: SGNS + Dirichlet
                 sgns_loss = sgns(context, model.word_embeds(target))
-                print(f'SGNS VECS: {t.isnan(sgns_loss).any()}')
+                print(f'SGNS VECS: {torch.isnan(sgns_loss).any()}')
                 diri_loss = dirichlet(model.doc_weights(doc_id))
-                print(f'DIRI VECS: {t.isnan(diri_loss).any()}')
+                print(f'DIRI VECS: {torch.isnan(diri_loss).any()}')
                 loss = sgns_loss + diri_loss
                 # Backprop and update
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), self.args.clip)
                 optimizer.step()
 
-                print(f'WORD GRAD VECS: {t.isnan(model.word_embeds.weight.grad).any()}')
-                print(f'DOC GRAD VECS: {t.isnan(model.doc_weights.weight.grad).any()}')
-                print(f'DOC TPOIC VECS: {t.isnan(model.topic_embeds.weight.grad).any()}')
+                print(f'WORD GRAD VECS: {torch.isnan(model.word_embeds.weight.grad).any()}')
+                print(f'DOC GRAD VECS: {torch.isnan(model.doc_weights.weight.grad).any()}')
+                print(f'DOC TPOIC VECS: {torch.isnan(model.topic_embeds.weight.grad).any()}')
                 
                 # Log only rank 0 GPU results
                 if hvd.rank() == 0:

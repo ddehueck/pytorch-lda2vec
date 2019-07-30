@@ -1,7 +1,7 @@
 from sklearn.datasets import fetch_20newsgroups
 from .dataset import LDA2VecDataset
 from .preprocess import Tokenizer
-import json
+import torch
 
 
 class NewsgroupsDataset(LDA2VecDataset):
@@ -10,7 +10,20 @@ class NewsgroupsDataset(LDA2VecDataset):
         LDA2VecDataset.__init__(self, args)
         self.files = self.read_files_from_scikit()
         self.tokenizer = Tokenizer(custom_stop=['article', 'writes'])
-        self.generate_examples_multi()
+
+        if args.load_dataset is not None:
+            # Load dataset from .pth file
+            dataset = torch.load(args.load_dataset)
+
+            # Load Dataset Object
+            self.examples = dataset['examples']
+            self.idx2doc = dataset['idx2doc']
+            self.term_freq_dict = dataset['term_freq_dict']
+
+            # Already saved
+            args.save_dataset = False
+        else:    
+            self.generate_examples_multi()
 
     def read_files_from_scikit(self):
         """
