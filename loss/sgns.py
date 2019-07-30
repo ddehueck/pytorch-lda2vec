@@ -28,9 +28,7 @@ class SGNSLoss(nn.Module):
     def forward(self, context, target):
         context, target = context.squeeze(), target.squeeze()
         print(f'CONTEXT S: {context.size()}')
-        print(f'CONTEXT NAN: {torch.isnan(context).any()}')
         print(f'TARGET S: {target.size()}')
-        print(f'TARGET NAN: {torch.isnan(target).any()}')
         # compute non-sampled portion
         dots = (context * target).sum(-1)
         print(f'DOTS: {dots}')
