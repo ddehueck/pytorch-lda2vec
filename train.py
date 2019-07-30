@@ -95,6 +95,8 @@ def get_args():
                         help='Boolean to stream log output to console.')
     parser.add_argument('--save-log', type=str_to_bool, default=True,
                         help='Boolean to save log output to a file.')
+    parser.add_argument('--load-dataset', type=str, default=None,
+                        help='Put the path to dataset file to use.')
 
     """
     Training Settings
