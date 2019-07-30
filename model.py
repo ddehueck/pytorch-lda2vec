@@ -27,6 +27,8 @@ class Lda2vec(nn.Module):
     def forward(self, x):
         # x should take the form of: (center word, doc_id)
         # Get word vector
+        print(f'CENTER NAN: {t.isnan(x[0]).any()}')
+        print(f'DOC ID: {t.isnan(x[1]).any()}')
         word_vecs = self.word_embeds(x[0]) # returns wordvec of index x[0] - the center word
 
         # Get document vector
@@ -48,6 +50,8 @@ class Lda2vec(nn.Module):
             doc_vecs = self.batchnorm(t.transpose(doc_vecs, 1, 2))
 
         # Combine into context vector - sum
+        print(f'WORD VECS: {t.isnan(word_vecs).any()}')
+        print(f'DOC VECS: {t.isnan(doc_vecs).any()}')
         context_vecs = t.add(word_vecs, doc_vecs)
 
         return context_vecs
