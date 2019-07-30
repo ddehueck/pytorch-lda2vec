@@ -27,9 +27,15 @@ class SGNSLoss(nn.Module):
 
     def forward(self, context, target):
         context, target = context.squeeze(), target.squeeze()
+        print(f'CONTEXT S: {context.size()}')
+        print(f'TARGET S: {target.size()}')
         # compute non-sampled portion
         dots = (context * target).sum(-1)
+        print(f'DOTS: {dots}')
+        print(f'DOTS S: {dots.size()}')
         log_targets = torch.log(torch.sigmoid(dots).clamp(self.EPSILON))
+        print(f'LOG TARGETS S: {log_targets.size()}')
+        print(f'LOG TARGETS NAN: {torch.isnan(log_targets).any()}')
         log_samples = []
         for l in range(self.NUM_SAMPLES):
             # Could probably optimize this by optimizing self.get_unigram
@@ -41,6 +47,8 @@ class SGNSLoss(nn.Module):
             log_samples.append(torch.log(torch.sigmoid(dot).clamp(self.EPSILON)))
 
         log_samples = torch.stack(log_samples).sum(0)
+        print(f'LOG SAMPLE S: {log_samples.size()}')
+        print(f'LOG SAMPLES NAN: {torch.isnan(log_samples).any()}')
         return torch.add(log_targets, log_samples).sum()  # A loss should return a single value
 
     def get_unigram_sample(self):
