@@ -37,7 +37,7 @@ class HorovodTrainer(LDA2VecTrainer):
         dataset = self.args.dataset(self.args)
         sampler = DistributedSampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
-            shuffle=True, sampler=sampler, num_workers=self.args.workers, pin_memory=True)
+            shuffle=False, sampler=sampler, num_workers=self.args.workers, pin_memory=True)
 
         if self.args.save_dataset:
             self.logger.info("Beginning to save dataset.")
