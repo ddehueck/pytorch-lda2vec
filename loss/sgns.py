@@ -1,4 +1,4 @@
-import torch
+import torch as t
 import torch.nn as nn
 import numpy as np
 
@@ -7,7 +7,7 @@ class SGNSLoss(nn.Module):
     BETA = 0.75  # exponent to adjust sampling frequency
     NUM_SAMPLES = 15  # Taken from Moody's OG code
     UNIGRAM_TABLE_SIZE = 10**5
-    EPSILON = 1e-9  # value to lower bound clamp to avoid -inf
+    EPSILON = 1e-5  # value to lower bound clamp to avoid -inf or 1/0
 
     def __init__(self, dataset, word_embeddings, device):
         super(SGNSLoss, self).__init__()
@@ -17,25 +17,19 @@ class SGNSLoss(nn.Module):
         self.device = device
 
         # Helpful values for unigram distribution generation
-        self.transformed_freq_vec = torch.tensor(
+        self.transformed_freq_vec = t.tensor(
                 list(dataset.term_freq_dict.values())
             ).pow(self.BETA)
-        self.freq_sum = torch.sum(self.transformed_freq_vec)
+        self.freq_sum = t.sum(self.transformed_freq_vec)
 
         # Generate table
         self.unigram_table = self.generate_unigram_table()
 
     def forward(self, context, target):
         context, target = context.squeeze(), target.squeeze()
-        print(f'CONTEXT S: {context.size()}')
-        print(f'TARGET S: {target.size()}')
         # compute non-sampled portion
         dots = (context * target).sum(-1)
-        print(f'DOTS: {dots}')
-        print(f'DOTS S: {dots.size()}')
-        log_targets = torch.log(torch.sigmoid(dots).clamp(self.EPSILON))
-        print(f'LOG TARGETS S: {log_targets.size()}')
-        print(f'LOG TARGETS NAN: {torch.isnan(log_targets).any()}')
+        log_targets = t.log(t.sigmoid(dots).clamp(self.EPSILON))
         log_samples = []
         for l in range(self.NUM_SAMPLES):
             # Could probably optimize this by optimizing self.get_unigram
@@ -43,13 +37,11 @@ class SGNSLoss(nn.Module):
             # self.NUM_SAMPLES? Would probably by faster than random.choice *
             # self.NUM_SAMPLES. 
             sample = self.get_unigram_sample()
-            dot = (torch.neg(context) * sample).sum(-1)
-            log_samples.append(torch.log(torch.sigmoid(dot).clamp(self.EPSILON)))
+            dot = (t.neg(context) * sample).sum(-1)
+            log_samples.append(t.log(t.sigmoid(dot).clamp(min=self.EPSILON, max=1 - self.EPSILON)))
 
-        log_samples = torch.stack(log_samples).sum(0)
-        print(f'LOG SAMPLE S: {log_samples.size()}')
-        print(f'LOG SAMPLES NAN: {torch.isnan(log_samples).any()}')
-        return torch.add(log_targets, log_samples).sum()  # A loss should return a single value
+        log_samples = t.stack(log_samples).sum(0)
+        return t.add(log_targets, log_samples).sum()  # A loss should return a single value
 
     def get_unigram_sample(self):
         """
@@ -57,7 +49,7 @@ class SGNSLoss(nn.Module):
         Randomly choose a value from self.unigram_table
         """
         rand_idx = np.random.choice(self.unigram_table)
-        rand_idx = torch.tensor(rand_idx).to(self.device)
+        rand_idx = t.tensor(rand_idx).to(self.device)
         return self.word_embeddings(rand_idx).squeeze()
 
     def get_unigram_prob(self, token_idx):

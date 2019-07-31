@@ -3,7 +3,6 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import DataLoader
@@ -31,7 +30,9 @@ class HorovodTrainer(LDA2VecTrainer):
 
         # Pin GPU to be used to process local rank (one GPU per process)
         torch.cuda.set_device(hvd.local_rank())
+        torch.autograd.set_detect_anomaly(True)
         torch.cuda.manual_seed(self.args.seed)
+        torch.manual_seed(self.args.seed)
 
         # Setup dataloader with a distributed sampler
         dataset = self.args.dataset(self.args)
@@ -44,16 +45,16 @@ class HorovodTrainer(LDA2VecTrainer):
             self.saver.save_dataset(dataset)
             self.logger.info("Finished saving dataset")
             
-        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args).cuda()
-        optimizer = optim.Adam(model.parameters(), lr=self.args.lr)
-       
-        # Broadcast from rank 0 to all other processes
-        hvd.broadcast_parameters(model.state_dict(), root_rank=0)
-        hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.idx2doc), self.args).cuda()
+        optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())
 
         # Distribute Optimizer
         compression = hvd.Compression.fp16 if self.args.compression else hvd.Compression.none
         optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
+       
+        # Broadcast from rank 0 to all other processes
+        hvd.broadcast_parameters(model.state_dict(), root_rank=0)
+        hvd.broadcast_optimizer_state(optimizer, root_rank=0)
 
         # Set up losses
         sgns = SGNSLoss(dataset, model.word_embeds, 'cuda')
@@ -80,11 +81,11 @@ class HorovodTrainer(LDA2VecTrainer):
             if self.args.compression:
                 self.logger.info(f'Using compression: {compression}')
 
-        global_step = 0
         for epoch in range(self.begin_epoch, self.args.epochs):
             sampler.set_epoch(epoch)
+            global_step = (1 + epoch) * len(dataloader)
             running_diri_loss, running_sgns_loss = 0.0, 0.0
-            self.logger.info(f'GPU:{hvd.rank()} has {len(dataloader)} batches.')
+            self.logger.info(f'GPU:{hvd.rank()} has {len(dataloader)} batches.')         
             for i, data in enumerate(dataloader):
                 # unpack data
                 (center, doc_id), target = data             
@@ -95,18 +96,12 @@ class HorovodTrainer(LDA2VecTrainer):
                 context = model((center, doc_id))
                 # Calc loss: SGNS + Dirichlet
                 sgns_loss = sgns(context, model.word_embeds(target))
-                print(f'SGNS VECS: {torch.isnan(sgns_loss).any()}')
                 diri_loss = dirichlet(model.doc_weights(doc_id))
-                print(f'DIRI VECS: {torch.isnan(diri_loss).any()}')
                 loss = sgns_loss + diri_loss
                 # Backprop and update
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), self.args.clip)
                 optimizer.step()
-
-                print(f'WORD GRAD VECS: {torch.isnan(model.word_embeds.weight.grad).any()}')
-                print(f'DOC GRAD VECS: {torch.isnan(model.doc_weights.weight.grad).any()}')
-                print(f'DOC TPOIC VECS: {torch.isnan(model.topic_embeds.weight.grad).any()}')
                 
                 # Log only rank 0 GPU results
                 if hvd.rank() == 0:

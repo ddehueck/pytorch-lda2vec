@@ -28,13 +28,12 @@ class Lda2vec(nn.Module):
         # x should take the form of: (center word, doc_id)
         # Get word vector
         word_vecs = self.word_embeds(x[0]) # returns wordvec of index x[0] - the center word
-        print(f'WORD VECS NAN: {t.isnan(word_vecs).any()}')
+        
         # Get document vector
         # 1. Softmax document weights to get proportions
         doc_weights = self.doc_weights(x[1]) # latent doc embedding of x[1] - doc_id
         proportions = F.softmax(doc_weights, dim=1)
 
-        print(f'PROPORTION VECS NAN: {t.isnan(proportions).any()}')
         # 2. Multiply by topic embeddings to get doc vector
         doc_vecs = t.matmul(self.topic_embeds, t.transpose(proportions, 1, 2))
         doc_vecs = t.transpose(doc_vecs, 1, 2)

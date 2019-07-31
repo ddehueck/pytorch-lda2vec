@@ -7,12 +7,14 @@ class FreeTextDataset(LDA2VecDataset):
 
     def __init__(self, args):
         LDA2VecDataset.__init__(self, args)
+        self.name = 'PyPI Free Text Dataset'
 
         if args.load_dataset is not None:
             # Load dataset from .pth file
             dataset = torch.load(args.load_dataset)
 
             # Load Dataset Object
+            # TODO: Save and load documents?
             self.examples = dataset['examples']
             self.idx2doc = dataset['idx2doc']
             self.term_freq_dict = dataset['term_freq_dict']

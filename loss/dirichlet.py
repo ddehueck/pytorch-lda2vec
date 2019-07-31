@@ -12,5 +12,4 @@ class DirichletLoss(nn.Module):
     def forward(self, doc_weights):
         proportions = F.softmax(doc_weights, dim=0)
         avg_log_proportion = t.sum(t.log(proportions), dim=2).mean()
-        print(f'AVG LOF PROPS VECS: {t.isnan(avg_log_proportion).any()}')
         return -self.lambda_val * (self.alpha - 1) * avg_log_proportion

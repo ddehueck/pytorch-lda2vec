@@ -8,6 +8,7 @@ class NewsgroupsDataset(LDA2VecDataset):
 
     def __init__(self, args):
         LDA2VecDataset.__init__(self, args)
+        self.name = '20 News Groups Dataset'
         self.files = self.read_files_from_scikit()
         self.tokenizer = Tokenizer(custom_stop=['article', 'writes'])
 
@@ -34,8 +35,6 @@ class NewsgroupsDataset(LDA2VecDataset):
         :returns: List of documents as strings
         """
         newsgroups_data = fetch_20newsgroups(subset='train', remove=('headers', 'footers'))
-        print('Using cleaned newsgroups data from scklearn...')
-    
         if self.args.toy:
             # Turns into a toy dataset
             return newsgroups_data['data'][:5]

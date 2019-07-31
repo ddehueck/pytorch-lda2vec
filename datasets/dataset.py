@@ -17,6 +17,7 @@ class LDA2VecDataset(Dataset):
         self.examples = []
         self.n_examples = 0
         self.idx2doc = dict()
+        self.name = ''
 
         if self.args.toy:
             # Turns into a toy dataset
