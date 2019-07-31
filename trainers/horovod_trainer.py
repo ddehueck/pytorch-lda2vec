@@ -35,7 +35,9 @@ class HorovodTrainer(LDA2VecTrainer):
         torch.manual_seed(self.args.seed)
 
         # Setup dataloader with a distributed sampler
+        self.logger.info("Loading Dataset...")
         dataset = self.args.dataset(self.args)
+        self.logger.info(f"Loaded Dataset: {dataset.name}")
         sampler = DistributedSampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
             shuffle=False, sampler=sampler, num_workers=self.args.workers, pin_memory=True)

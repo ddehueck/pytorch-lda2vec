@@ -1,6 +1,7 @@
 # Ignore checkpoints and data directories
 experiments/
 data/
+dataset.pth
 
 # Vim
 *.swp
