@@ -89,7 +89,7 @@ def get_args():
     """
     parser.add_argument('--resume', type=str, default=None,
                         help='Put the path to checkpoint file to resume training')
-    parser.add_argument('--check_dir', type=str, default='experiments/',
+    parser.add_argument('--check-dir', type=str, default='experiments/',
                         help='Set the checkpoint directory name')
     parser.add_argument('--stream-log', type=str_to_bool, default=True,
                         help='Boolean to stream log output to console.')

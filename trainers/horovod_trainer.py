@@ -47,8 +47,8 @@ class HorovodTrainer(LDA2VecTrainer):
             self.saver.save_dataset(dataset)
             self.logger.info("Finished saving dataset")
             
-        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.idx2doc), self.args).cuda()
-        optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())
+        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args).cuda()
+        optimizer = optim.SGD(model.parameters(), lr=self.args.lr * hvd.size(), momentum=self.args.momentum)
 
         # Distribute Optimizer
         compression = hvd.Compression.fp16 if self.args.compression else hvd.Compression.none
@@ -85,7 +85,7 @@ class HorovodTrainer(LDA2VecTrainer):
 
         for epoch in range(self.begin_epoch, self.args.epochs):
             sampler.set_epoch(epoch)
-            global_step = (1 + epoch) * len(dataloader)
+            global_step = epoch * len(dataloader)
             running_diri_loss, running_sgns_loss = 0.0, 0.0
             self.logger.info(f'GPU:{hvd.rank()} has {len(dataloader)} batches.')         
             for i, data in enumerate(dataloader):
@@ -155,6 +155,8 @@ class HorovodTrainer(LDA2VecTrainer):
         # Log gradients - index select to only view gradients of embeddings in batch
         self.logger.info(f'DOCUMENT WEIGHT GRADIENTS:\n\
             {torch.index_select(model.doc_weights.weight.grad, 0, doc_id.squeeze())}')
+        
+        self.logger.info(f'TOPIC GRADIENTS:\n{model.topic_embeds.grad}')
         
         self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
             {torch.index_select(model.word_embeds.weight.grad, 0, center.squeeze())}')
