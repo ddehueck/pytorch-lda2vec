@@ -11,13 +11,12 @@ from tqdm import tqdm
 import numpy as np
 import os
 from .trainer import LDA2VecTrainer
+from collections import Counter
 
 class Trainer(LDA2VecTrainer):
 
     def __init__(self, args):
         LDA2VecTrainer.__init__(self, args)
-
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # Load data
         self.dataset = args.dataset(args)
         self.logger.info("Finished loading dataset")
@@ -33,17 +32,17 @@ class Trainer(LDA2VecTrainer):
         # Load model and training necessities
         self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args)
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
-        self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.device)
+        self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.args.device)
         self.dirichlet = DirichletLoss(self.args)
 
         # Visualize RANDOM document embeddings
-        print('Adding random embeddings')
+        """print('Adding random embeddings')
         self.writer.add_embedding(
             self.model.get_doc_vectors(),
             global_step=0,
             tag=f'de_epoch_random',
         )
-        print('Finished adding random embeddings!')
+        print('Finished adding random embeddings!')"""
 
         # Add graph to tensorboard
         # TODO: Get working on multi-gpu stuff
@@ -65,23 +64,28 @@ class Trainer(LDA2VecTrainer):
 
     def train(self):
         # TODO: Offload logging data into logger class
-        self.model.to(self.device)
-        self.logger.info('Training on device: {}'.format(self.device))
-        running_loss, sgns_loss, diri_loss, global_step = 0.0, 0.0, 0.0, 0
+        self.model.to(self.args.device)
+        self.logger.info('Training on device: {}'.format(self.args.device))
+        
         for epoch in range(self.begin_epoch, self.args.epochs):
+            
             self.logger.info('Beginning epoch: {}/{}'.format(epoch+1, self.args.epochs))
-            for data in tqdm(self.dataloader):
+            running_loss, running_sgns_loss, running_diri_loss = 0.0, 0.0, 0.0
+            global_step = epoch * len(self.dataloader)
+            num_examples = 0
+            
+            for i, data in enumerate(tqdm(self.dataloader)):
                 # unpack data
                 (center, doc_id), target = data
-                center, doc_id, target = center.to(self.device), doc_id.to(self.device), target.to(self.device)
+                center, doc_id, target = center.to(self.args.device), doc_id.to(self.args.device), target.to(self.args.device)
                 # Remove accumulated gradients
                 self.optim.zero_grad()
                 # Get context vector: word + doc
                 context = self.model((center, doc_id))  # context - [batch_size x embed_len x 1]
                 # Calc loss: SGNS + Dirichlet
-                sgns = self.sgns(context, self.model.word_embeds(target))  # target - [batch_size x 1]
-                diri = self.dirichlet(self.model.doc_weights(doc_id))  # doc_id - [batch_size x 1]
-                loss = sgns + diri
+                sgns_loss = self.sgns(context, self.model.word_embeds(target))  # target - [batch_size x 1]
+                diri_loss = self.dirichlet(self.model.doc_weights(doc_id))  # doc_id - [batch_size x 1]
+                loss = sgns_loss + diri_loss
                # Backprop and update
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -89,55 +93,73 @@ class Trainer(LDA2VecTrainer):
 
                 # Keep track of loss
                 running_loss += loss.item()
-                sgns_loss += sgns.item()
-                diri_loss += diri.item()
+                running_sgns_loss += sgns_loss.item()
+                running_diri_loss += diri_loss.item()
                 global_step += 1
+                num_examples += len(data) # Last batch size may not equal args.batch_size
+                
+                # Log at step
                 if global_step % self.args.log_step == 0:
-                    norm = global_step * self.args.batch_size
-                    self.writer.add_scalar('train_loss', running_loss/norm,
-                                           global_step)
-                    self.writer.add_scalar('sgns_loss', sgns_loss/norm,
-                                           global_step)
-                    self.writer.add_scalar('diri_loss', diri_loss/norm,
-                                           global_step)
-                    # Log gradients - index select to only view gradients of embeddings in batch
-                    self.logger.info('\nLogging Gradient: \nDocument weight gradients at step {}:\n {}'.format(
-                        global_step, torch.index_select(self.model.doc_weights.weight.grad, 0, doc_id.squeeze())))
-                    self.logger.info('\nLogging Gradient: \nWord embedding gradients at step {}:\n {}'.format(
-                        global_step, torch.index_select(self.model.word_embeds.weight.grad, 0, center.squeeze())))
-
-                    # Log document weights - check for sparsity
-                    doc_weights =  self.model.doc_weights.weight
-                    proportions = F.softmax(doc_weights, dim=1)
-                    avg_s_score = np.mean([utils.get_sparsity_score(p) for p in proportions])
-
-                    self.logger.info('\nLogging Proportions: \nDocuments proportions at step {}:\n {}'.format(
-                        global_step, proportions))    
-                    self.logger.info('\nLogging Proportions: Average Sparsity score is {}\n'.format(avg_s_score))   
-                    self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
-
-                    _, max_indices = torch.max(proportions, dim=1)
-                    self.logger.info('\nLogging Maximum Indices: {}\n'.format(max_indices))
+                    norm = (i + 1) * num_examples
+                    self.log_step(epoch, global_step, running_diri_loss/norm, running_sgns_loss/norm, doc_id, center, target)
             
-            # Log epoch loss
-            self.logger.info("Training Loss: {}".format(running_loss/(global_step*self.args.batch_size)))
-
-           # Visualize document embeddings
-            self.writer.add_embedding(
-                self.model.get_doc_vectors(),
-                global_step=epoch,
-                tag=f'de_epoch_{epoch}',
-            )
-
-            # Save checkpoint
-            self.logger.info("Beginning to save checkpoint")
-            self.saver.save_checkpoint({
-                'epoch': epoch + 1,
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': self.optim.state_dict(),
-                'loss': loss,
-            })
-            self.logger.info("Finished saving checkpoint")
+            norm = (i + 1) * num_examples
+            self.log_and_save_epoch(epoch, running_loss/norm)
 
         self.writer.close()
+
+    def log_and_save_epoch(self, epoch, loss):
+
+       # Visualize document embeddings
+        self.writer.add_embedding(
+            self.model.get_doc_vectors(),
+            global_step=epoch,
+            tag=f'de_epoch_{epoch}',
+        )
+
+        # Save checkpoint
+        self.logger.info(f'Beginning to save checkpoint')
+        self.saver.save_checkpoint({
+            'epoch': epoch + 1,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optim.state_dict(),
+            'loss': loss,
+        })
+        self.logger.info(f'Finished saving checkpoint')
+
+
+    def log_step(self, epoch, global_step, diri_loss, sgns_loss, doc_id, center, target):
+        self.logger.info(f'#############################################')
+        self.logger.info(f'EPOCH: {epoch} | STEP: {global_step} | LOSS {diri_loss+sgns_loss}')
+        self.logger.info(f'#############################################\n\n')
+        # Log loss
+        self.writer.add_scalar('train_loss', diri_loss + sgns_loss, global_step)
+        self.writer.add_scalar('diri_loss', diri_loss, global_step)
+        self.writer.add_scalar('sgns_loss', sgns_loss, global_step)
+        
+        # Log gradients - index select to only view gradients of embeddings in batch
+        self.logger.info(f'DOCUMENT WEIGHT GRADIENTS:\n\
+            {torch.index_select(self.model.doc_weights.weight.grad, 0, doc_id.squeeze())}')
+        
+        self.logger.info(f'TOPIC GRADIENTS:\n{self.model.topic_embeds.grad}')
+        
+        self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
+            {torch.index_select(self.model.word_embeds.weight.grad, 0, center.squeeze())}')
+        self.logger.info(f'\n{torch.index_select(self.model.word_embeds.weight.grad, 0, target.squeeze())}')
+
+        # Log document weights - check for sparsity
+        doc_weights = self.model.doc_weights.weight
+        proportions = F.softmax(doc_weights, dim=1)
+        avg_s_score = np.mean([utils.get_sparsity_score(p) for p in proportions])
+
+        self.logger.info(f'DOCUMENT PROPORTIIONS:\n {proportions}')    
+        self.logger.info(f'AVERAGE SPARSITY SCORE: {avg_s_score}\n')   
+        self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
+
+        _, max_indices = torch.max(proportions, dim=1)
+        max_indices = list(max_indices.cpu().numpy())
+        max_counter = Counter(max_indices)
+        
+        self.logger.info(f'MAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
+        self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')
 

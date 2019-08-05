@@ -1,6 +1,7 @@
 import argparse
 from datasets import newsgroups
 from datasets import freetext
+import torch as t
 
 
 def str_to_bool(arg):
@@ -107,6 +108,10 @@ def get_args():
                         use horovod distributed training (default: False)')
     parser.add_argument('--compression', type=str_to_bool, default=True, help='Boolean to\
                         use fp16 compression horovod distributed training (default: True)')
+
+    # Can only be used with the default, standard trainer.
+    parser.add_argument('--device', type=str, default=t.device("cuda:0" if t.cuda.is_available() else "cpu"),
+                        help='device to train on (default: cuda:0 if cuda is available otherwise cpu)')
 
     """
     Jupyter Notebook Argumenet

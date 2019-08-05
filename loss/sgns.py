@@ -26,9 +26,9 @@ class SGNSLoss(nn.Module):
         self.unigram_table = self.generate_unigram_table()
 
     def forward(self, context, target):
-        context, target = context.squeeze(), target.squeeze()
+        context, target = context.squeeze(), target.squeeze()  # batch_size x embed_size
         # compute non-sampled portion
-        dots = (context * target).sum(-1)
+        dots = (context * target).sum(-1)  # batch_size
         log_targets = t.log(t.sigmoid(dots).clamp(self.EPSILON))
         log_samples = []
         for l in range(self.NUM_SAMPLES):

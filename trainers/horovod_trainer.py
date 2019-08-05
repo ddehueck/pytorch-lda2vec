@@ -84,10 +84,12 @@ class HorovodTrainer(LDA2VecTrainer):
                 self.logger.info(f'Using compression: {compression}')
 
         for epoch in range(self.begin_epoch, self.args.epochs):
+
             sampler.set_epoch(epoch)
             global_step = epoch * len(dataloader)
-            running_diri_loss, running_sgns_loss = 0.0, 0.0
-            self.logger.info(f'GPU:{hvd.rank()} has {len(dataloader)} batches.')         
+            running_diri_loss, running_sgns_loss, num_examples = 0.0, 0.0, 0
+            self.logger.info(f'GPU:{hvd.rank()} has {len(dataloader)} batches.')   
+
             for i, data in enumerate(dataloader):
                 # unpack data
                 (center, doc_id), target = data             
@@ -110,15 +112,16 @@ class HorovodTrainer(LDA2VecTrainer):
                     global_step += 1
                     running_sgns_loss += sgns_loss
                     running_diri_loss += diri_loss
+                    num_examples += len(data)
+                    
                     if global_step % self.args.log_step == 0:
-                        norm = (i + 1) * self.args.batch_size
                         time_per_batch = ((time.perf_counter() - begin_time)/global_step)/hvd.size()
                         self.log_step(model, epoch, time_per_batch, global_step, 
-                        running_diri_loss/norm, running_sgns_loss/norm, doc_id, center, target)
+                        running_diri_loss/num_examples, running_sgns_loss/num_examples, doc_id, center, target)
 
             # Log and save only rank 0 GPU results
             if hvd.rank() == 0:
-                self.log_and_save_epoch(model, optimizer, epoch, dataset, loss)
+                self.log_and_save_epoch(model, optimizer, epoch, dataset, (running_sgns_loss + running_diri_loss)/num_examples))
 
         # Finished - close writer
         self.writer.close()
