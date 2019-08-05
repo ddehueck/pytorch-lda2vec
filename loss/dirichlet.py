@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 class DirichletLoss(nn.Module):
+    EPSILON = 1e-5
     
     def __init__(self, args):
         super(DirichletLoss, self).__init__()
@@ -10,6 +11,6 @@ class DirichletLoss(nn.Module):
         self.lambda_val = args.lambda_val
 
     def forward(self, doc_weights):
-        proportions = F.softmax(doc_weights, dim=0)
+        proportions = F.softmax(doc_weights, dim=0).clamp(min=self.EPSILON, max=1-self.EPSILON)
         avg_log_proportion = t.sum(t.log(proportions), dim=2).mean()
         return -self.lambda_val * (self.alpha - 1) * avg_log_proportion

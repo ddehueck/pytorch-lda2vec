@@ -38,7 +38,7 @@ class SGNSLoss(nn.Module):
             # self.NUM_SAMPLES. 
             sample = self.get_unigram_sample()
             dot = (t.neg(context) * sample).sum(-1)
-            log_samples.append(t.log(t.sigmoid(dot).clamp(min=self.EPSILON, max=1 - self.EPSILON)))
+            log_samples.append(t.log(t.sigmoid(dot).clamp(min=self.EPSILON, max=1-self.EPSILON)))
 
         log_samples = t.stack(log_samples).sum(0)
         return t.add(log_targets, log_samples).sum()  # A loss should return a single value
