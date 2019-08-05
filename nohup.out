@@ -1,40 +1,0 @@
-[perf49.perf.lab.eng.bos.redhat.com:115072] Warning: could not find environment variable "PS1"
-[1,0]<stdout>:
-[1,0]<stdout>:Generating Examples for Dataset (multi-threaded)...
-[1,0]<stderr>:  0%|          | 0/46 [00:00<?, ?it/s][1,0]<stderr>:  2%|▏         | 1/46 [01:16<57:39, 76.87s/it][1,0]<stderr>:  4%|▍         | 2/46 [04:49<1:26:08, 117.47s/it][1,0]<stderr>:  7%|▋         | 3/46 [04:55<1:00:24, 84.30s/it] [1,0]<stderr>:  9%|▊         | 4/46 [04:57<41:32, 59.34s/it]  [1,0]<stderr>: 11%|█         | 5/46 [04:57<28:26, 41.63s/it][1,0]<stderr>: 13%|█▎        | 6/46 [04:58<19:39, 29.48s/it][1,0]<stderr>: 17%|█▋        | 8/46 [04:59<13:09, 20.77s/it][1,0]<stderr>: 20%|█▉        | 9/46 [05:01<09:17, 15.06s/it][1,0]<stderr>: 22%|██▏       | 10/46 [05:01<06:26, 10.74s/it][1,0]<stderr>: 26%|██▌       | 12/46 [05:02<04:17,  7.58s/it][1,0]<stderr>: 28%|██▊       | 13/46 [05:02<03:01,  5.50s/it][1,0]<stderr>: 30%|███       | 14/46 [05:03<02:07,  3.98s/it][1,0]<stderr>: 33%|███▎      | 15/46 [05:04<01:38,  3.19s/it][1,0]<stderr>: 35%|███▍      | 16/46 [05:04<01:08,  2.29s/it][1,0]<stderr>: 37%|███▋      | 17/46 [05:04<00:47,  1.64s/it][1,0]<stderr>: 39%|███▉      | 18/46 [05:05<00:34,  1.23s/it][1,0]<stderr>: 41%|████▏     | 19/46 [05:05<00:24,  1.08it/s][1,0]<stderr>: 43%|████▎     | 20/46 [05:05<00:18,  1.39it/s][1,0]<stderr>: 46%|████▌     | 21/46 [05:06<00:15,  1.57it/s][1,0]<stderr>: 48%|████▊     | 22/46 [05:06<00:15,  1.51it/s][1,0]<stderr>: 50%|█████     | 23/46 [05:07<00:11,  1.93it/s][1,0]<stderr>: 57%|█████▋    | 26/46 [05:07<00:07,  2.60it/s][1,0]<stderr>: 61%|██████    | 28/46 [05:07<00:05,  3.38it/s][1,0]<stderr>: 63%|██████▎   | 29/46 [05:07<00:04,  3.66it/s][1,0]<stderr>: 65%|██████▌   | 30/46 [05:07<00:03,  4.25it/s][1,0]<stderr>: 67%|██████▋   | 31/46 [05:08<00:03,  3.92it/s][1,0]<stderr>: 72%|███████▏  | 33/46 [05:08<00:03,  3.92it/s][1,0]<stderr>: 76%|███████▌  | 35/46 [05:08<00:02,  5.12it/s][1,0]<stderr>: 80%|████████  | 37/46 [05:08<00:01,  5.94it/s][1,0]<stderr>: 87%|████████▋ | 40/46 [05:09<00:00,  7.73it/s][1,0]<stderr>: 93%|█████████▎| 43/46 [05:09<00:00,  7.84it/s][1,0]<stderr>:100%|██████████| 46/46 [05:09<00:00,  6.73it/s][1,0]<stderr>:
-[1,0]<stderr>:Traceback (most recent call last):
-[1,0]<stderr>:  File "/root/.local/share/virtualenvs/pytorch-lda2vec-FhDmK8Bk/lib/python3.7/site-packages/torch/utils/data/dataloader.py", line 511, in _try_get_batch
-[1,0]<stderr>:    data = self.data_queue.get(timeout=timeout)
-[1,0]<stderr>:  File "/usr/local/lib/python3.7/queue.py", line 179, in get
-[1,0]<stderr>:    self.not_empty.wait(remaining)
-[1,0]<stderr>:  File "/usr/local/lib/python3.7/threading.py", line 300, in wait
-[1,0]<stderr>:    gotit = waiter.acquire(True, timeout)
-[1,0]<stderr>:  File "/root/.local/share/virtualenvs/pytorch-lda2vec-FhDmK8Bk/lib/python3.7/site-packages/torch/utils/data/_utils/signal_handling.py", line 63, in handler
-[1,0]<stderr>:    _error_if_any_worker_fails()
-[1,0]<stderr>:RuntimeError: DataLoader worker (pid 60154) is killed by signal: Terminated. 
-[1,0]<stderr>:
-[1,0]<stderr>:During handling of the above exception, another exception occurred:
-[1,0]<stderr>:
-[1,0]<stderr>:Traceback (most recent call last):
-[1,0]<stderr>:  File "train.py", line 134, in <module>
-[1,0]<stderr>:    trainer.train()
-[1,0]<stderr>:  File "/root/devin-intern/pytorch-lda2vec/trainers/horovod_trainer.py", line 91, in train
-[1,0]<stderr>:    for i, data in enumerate(dataloader):
-[1,0]<stderr>:  File "/root/.local/share/virtualenvs/pytorch-lda2vec-FhDmK8Bk/lib/python3.7/site-packages/torch/utils/data/dataloader.py", line 576, in __next__
-[1,0]<stderr>:    idx, batch = self._get_batch()
-[1,0]<stderr>:  File "/root/.local/share/virtualenvs/pytorch-lda2vec-FhDmK8Bk/lib/python3.7/site-packages/torch/utils/data/dataloader.py", line 543, in _get_batch
-[1,0]<stderr>:    success, data = self._try_get_batch()
-[1,0]<stderr>:  File "/root/.local/share/virtualenvs/pytorch-lda2vec-FhDmK8Bk/lib/python3.7/site-packages/torch/utils/data/dataloader.py", line 519, in _try_get_batch
-[1,0]<stderr>:    raise RuntimeError('DataLoader worker (pid(s) {}) exited unexpectedly'.format(pids_str))
-[1,0]<stderr>:RuntimeError: DataLoader worker (pid(s) 60154) exited unexpectedly
---------------------------------------------------------------------------
-Primary job  terminated normally, but 1 process returned
-a non-zero exit code. Per user-direction, the job has been aborted.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-mpirun detected that one or more processes exited with non-zero status, thus causing
-the job to be terminated. The first process to do so was:
-
-  Process name: [[19656,1],0]
-  Exit code:    1
---------------------------------------------------------------------------

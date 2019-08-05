@@ -1,6 +1,8 @@
 import torch as t
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
+from .utils import AliasMultinomial
 
 
 class SGNSLoss(nn.Module):
@@ -18,8 +20,8 @@ class SGNSLoss(nn.Module):
 
         # Helpful values for unigram distribution generation
         self.transformed_freq_vec = t.tensor(
-                list(dataset.term_freq_dict.values())
-            ).pow(self.BETA)
+                np.array(list(dataset.term_freq_dict.values()))**self.BETA
+            )
         self.freq_sum = t.sum(self.transformed_freq_vec)
 
         # Generate table
@@ -27,30 +29,28 @@ class SGNSLoss(nn.Module):
 
     def forward(self, context, target):
         context, target = context.squeeze(), target.squeeze()  # batch_size x embed_size
-        # compute non-sampled portion
+        
+        # Compute non-sampled portion
         dots = (context * target).sum(-1)  # batch_size
-        log_targets = t.log(t.sigmoid(dots).clamp(self.EPSILON))
+        log_targets = F.logsigmoid(dots)
+
+        # Compute sampled portion
+        samples = self.get_unigram_samples() # num_samples x batch_size
         log_samples = []
-        for l in range(self.NUM_SAMPLES):
-            # Could probably optimize this by optimizing self.get_unigram
-            # _sample() - maybe return all the samples needed as specified by
-            # self.NUM_SAMPLES? Would probably by faster than random.choice *
-            # self.NUM_SAMPLES. 
-            sample = self.get_unigram_sample()
-            dot = (t.neg(context) * sample).sum(-1)
-            log_samples.append(t.log(t.sigmoid(dot).clamp(min=self.EPSILON, max=1-self.EPSILON)))
+        for s in samples:
+            dot = (t.neg(context) * s).sum(-1) # batch_size
+            log_samples.append(F.logsigmoid(dot))
 
         log_samples = t.stack(log_samples).sum(0)
-        return t.add(log_targets, log_samples).sum()  # A loss should return a single value
+        return t.add(log_targets, log_samples).mean()
 
-    def get_unigram_sample(self):
+    def get_unigram_samples(self, N=NUM_SAMPLES):
         """
         Returns a sample according to a unigram distribution
         Randomly choose a value from self.unigram_table
         """
-        rand_idx = np.random.choice(self.unigram_table)
-        rand_idx = t.tensor(rand_idx).to(self.device)
-        return self.word_embeddings(rand_idx).squeeze()
+        rand_idxs = self.unigram_table.draw(N).to(self.device)
+        return self.word_embeddings(rand_idxs).squeeze()
 
     def get_unigram_prob(self, token_idx):
         return (self.transformed_freq_vec[token_idx].item()) / self.freq_sum.item()
@@ -60,5 +60,5 @@ class SGNSLoss(nn.Module):
         for token_idx in range(0, self.vocab_len):
             PDF.append(self.get_unigram_prob(token_idx))
         # Generate the table from PDF
-        return np.random.choice(self.vocab_len, self.UNIGRAM_TABLE_SIZE, p=PDF)
+        return AliasMultinomial(PDF)
 
