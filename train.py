@@ -82,7 +82,7 @@ def get_args():
                         help='random seed (default: 42)')
     parser.add_argument('--log-step', type=int, default=250, help='Step at which for every step training info\
                         is logged. (default: 250)')
-    parser.add_argument('--clip', type=float, default=5, help='Value to keep gradient between (-val, +val)\
+    parser.add_argument('--clip', type=float, default=5.0, help='Value to keep gradient between (-val, +val)\
                         (default: 5)')
     
     """
