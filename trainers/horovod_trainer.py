@@ -150,7 +150,10 @@ class HorovodTrainer(LDA2VecTrainer):
         self.logger.info(f'##################################################################################')
         self.logger.info(f'EPOCH: {epoch} | STEP: {global_step} | TIME: {time} (s/batch) | LOSS {diri_loss+sgns_loss}')
         self.logger.info(f'##################################################################################\n\n')
+
         # Log loss
+        self.logger.info(f'DIRI LOSS: {diri_loss}')
+        self.logger.info(f'SGNS LOSS: {sgns_loss}')
         self.writer.add_scalar('train_loss', diri_loss + sgns_loss, global_step)
         self.writer.add_scalar('diri_loss', diri_loss, global_step)
         self.writer.add_scalar('sgns_loss', sgns_loss, global_step)
