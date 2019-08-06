@@ -121,7 +121,7 @@ class HorovodTrainer(LDA2VecTrainer):
 
             # Log and save only rank 0 GPU results
             if hvd.rank() == 0:
-                self.log_and_save_epoch(model, optimizer, epoch, dataset, (running_sgns_loss + running_diri_loss)/num_examples))
+                self.log_and_save_epoch(model, optimizer, epoch, dataset, (running_sgns_loss + running_diri_loss)/num_examples)
 
         # Finished - close writer
         self.writer.close()
