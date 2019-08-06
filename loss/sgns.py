@@ -42,7 +42,7 @@ class SGNSLoss(nn.Module):
             log_samples.append(F.logsigmoid(dot))
 
         log_samples = t.stack(log_samples).sum(0)
-        return t.add(log_targets, log_samples).mean()
+        return t.add(log_targets, log_samples).mean().neg() # Negative so goes towards loss of 0
 
     def get_unigram_samples(self, N=NUM_SAMPLES):
         """
