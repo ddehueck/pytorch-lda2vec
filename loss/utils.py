@@ -47,7 +47,7 @@ class AliasMultinomial(object):
             else:
                 larger.append(large)
 
-        self.q.clamp(0, 1-1e-9)
+        self.q.clamp(0.0, 1.0)
         self.J.clamp(0, K - 1)
 
     def draw(self, N):
@@ -55,7 +55,7 @@ class AliasMultinomial(object):
 
         K = self.J.size(0)
         r = t.LongTensor(np.random.randint(0, K, size=N)).to(self.device)
-        q = self.q.index_select(0, r)
+        q = self.q.index_select(0, r).clamp(0.0, 1.0)
         j = self.J.index_select(0, r)
         b = t.bernoulli(q)
         oq = r.mul(b.long())

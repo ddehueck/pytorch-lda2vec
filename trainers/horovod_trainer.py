@@ -127,6 +127,24 @@ class HorovodTrainer(LDA2VecTrainer):
         self.writer.close()
 
     def log_and_save_epoch(self, model, optim, epoch, dataset, loss):
+        self.logger.info(f'####################')
+        self.logger.info(f'COMPLETED EPOCH: {epoch}')
+        self.logger.info(f'####################')
+        # Log document weights - check for sparsity
+        doc_weights = model.doc_weights.weight
+        proportions = F.softmax(doc_weights, dim=1)
+        avg_s_score = np.mean([utils.get_sparsity_score(p) for p in proportions])
+
+        self.logger.info(f'DOCUMENT PROPORTIIONS:\n {proportions}')    
+        self.logger.info(f'AVERAGE SPARSITY SCORE: {avg_s_score}\n')   
+        self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
+
+        _, max_indices = torch.max(proportions, dim=1)
+        max_indices = list(max_indices.cpu().numpy())
+        max_counter = Counter(max_indices)
+        
+        self.logger.info(f'MAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
+        self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')
 
        # Visualize document embeddings
         self.writer.add_embedding(
@@ -166,20 +184,4 @@ class HorovodTrainer(LDA2VecTrainer):
         
         self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
             {torch.index_select(model.word_embeds.weight.grad, 0, center.squeeze())}')
-        self.logger.info(f'\n{torch.index_select(model.word_embeds.weight.grad, 0, target.squeeze())}')
-
-        # Log document weights - check for sparsity
-        doc_weights = model.doc_weights.weight
-        proportions = F.softmax(doc_weights, dim=1)
-        avg_s_score = np.mean([utils.get_sparsity_score(p) for p in proportions])
-
-        self.logger.info(f'DOCUMENT PROPORTIIONS:\n {proportions}')    
-        self.logger.info(f'AVERAGE SPARSITY SCORE: {avg_s_score}\n')   
-        self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
-
-        """_, max_indices = torch.max(proportions, dim=1)
-        max_indices = list(max_indices.cpu().numpy())
-        max_counter = Counter(max_indices)
-        
-        self.logger.info(f'MAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
-        self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')"""
+        self.logger.info(f'\n{torch.index_select(model.word_embeds.weight.grad, 0, target.squeeze())}'
