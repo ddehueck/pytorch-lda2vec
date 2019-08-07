@@ -184,4 +184,4 @@ class HorovodTrainer(LDA2VecTrainer):
         
         self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
             {torch.index_select(model.word_embeds.weight.grad, 0, center.squeeze())}')
-        self.logger.info(f'\n{torch.index_select(model.word_embeds.weight.grad, 0, target.squeeze())}'
+        self.logger.info(f'\n{torch.index_select(model.word_embeds.weight.grad, 0, target.squeeze())}')
