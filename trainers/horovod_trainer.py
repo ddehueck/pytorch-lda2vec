@@ -137,7 +137,7 @@ class HorovodTrainer(LDA2VecTrainer):
 
         self.logger.info(f'DOCUMENT PROPORTIIONS:\n {proportions}')    
         self.logger.info(f'AVERAGE SPARSITY SCORE: {avg_s_score}\n')   
-        self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
+        self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, epoch)
 
         _, max_indices = torch.max(proportions, dim=1)
         max_indices = list(max_indices.cpu().numpy())
