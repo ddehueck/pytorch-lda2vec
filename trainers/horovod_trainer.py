@@ -177,9 +177,9 @@ class HorovodTrainer(LDA2VecTrainer):
         self.logger.info(f'AVERAGE SPARSITY SCORE: {avg_s_score}\n')   
         self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
 
-        _, max_indices = torch.max(proportions, dim=1)
+        """_, max_indices = torch.max(proportions, dim=1)
         max_indices = list(max_indices.cpu().numpy())
         max_counter = Counter(max_indices)
         
         self.logger.info(f'MAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
-        self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')
+        self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')"""
