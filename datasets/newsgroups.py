@@ -26,6 +26,9 @@ class NewsgroupsDataset(LDA2VecDataset):
         else:    
             self.generate_examples_multi()
 
+        print(f'There were {self.n_oov} tokens found that were out of vocabulary.')
+        print(f'There were {len(list(self.term_freq_dict.keys()))} tokens in this vocabulary.')
+
     def read_files_from_scikit(self):
         """
         Read files from sckilearn dataset

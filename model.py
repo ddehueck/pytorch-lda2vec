@@ -2,7 +2,7 @@ import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.uniform import Uniform
-
+import spacy
 
 class Lda2vec(nn.Module):
 
@@ -12,6 +12,15 @@ class Lda2vec(nn.Module):
         self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
         self.topic_embeds = nn.Parameter(t.randn((args.embedding_len, args.num_topics)), requires_grad=True)
 
+        if args.use_pretrained:
+            # Trainer adds nlp to args if using pretrained
+            vocab_size, embed_len = args.nlp.vocab.vectors.shape
+            glove_vecs = t.from_numpy(args.nlp.vocab.vectors.data)
+            # Initialize from pretrained
+            self.word_embeds = nn.Embedding(vocab_size, embed_len).from_pretrained(glove_vecs, freeze=False)
+        else:
+            self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
+
         if args.uni_doc_init:
              # Sample from a uniform distribution betwen ~[-sqrt(3), +sqrt(3)]
              # sqrt(3) chosen from goodfellow's GAN initialization
@@ -20,9 +29,8 @@ class Lda2vec(nn.Module):
         else:
             self.doc_weights = nn.Embedding(num_docs, args.num_topics)
 
-        # Reqularization Layers
+        # Reqularization Layer
         self.dropout = nn.Dropout(p=0.5)
-        self.batchnorm = nn.BatchNorm1d(args.embedding_len)
 
     def forward(self, x):
         # x should take the form of: (center word, doc_id)
@@ -42,10 +50,6 @@ class Lda2vec(nn.Module):
         if self.args.use_dropout:
             word_vecs = self.dropout(word_vecs)
             doc_vecs = self.dropout(doc_vecs)
-
-        if self.args.use_batchnorm:
-            word_vecs = self.batchnorm(t.transpose(word_vecs, 1, 2))
-            doc_vecs = self.batchnorm(t.transpose(doc_vecs, 1, 2))
 
         # Combine into context vector - sum
         context_vecs = t.add(word_vecs, doc_vecs)

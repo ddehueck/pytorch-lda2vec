@@ -46,7 +46,7 @@ def get_args():
                         used when mult-threading the generation of training examples\
                         (default: 250)')
     parser.add_argument('--toy', type=str_to_bool, default=False, help='Boolean to \
-                        use just 5 files as a toy dataset or testing (default: False)')
+                        use just 5 files as a toy dataset for testing (default: False)')
 
     """
     Model Parameters
@@ -58,6 +58,8 @@ def get_args():
     parser.add_argument('--uni-doc-init', type=str_to_bool, default=False, help='Have doc\
                         weights be uniformaly distributed to counteract initial undefined\
                          topic structure - experimental (default: False)')
+    parser.add_argument('--use-pretrained', type=str_to_bool, default=False, 
+                        help='Use GloVe vectors trained on Common Crawl (default: False)')
     parser.add_argument('--lambda-val', type=int, default=100, help='Balancing parameter\
                         for dirichlet loss value (default: 100)')
     
@@ -75,9 +77,6 @@ def get_args():
     parser.add_argument('--use-dropout', type=str_to_bool, default=True,
                         help='Boolean value to apply dropout during training\
                         (default: True)')
-    parser.add_argument('--use-batchnorm', type=str_to_bool, default=True,
-                        help='Boolean value to apply batch normalization\
-                              during training (default: True)')
     parser.add_argument('--seed', type=int, default=42, metavar='S',
                         help='random seed (default: 42)')
     parser.add_argument('--log-step', type=int, default=250, help='Step at which for every step training info\

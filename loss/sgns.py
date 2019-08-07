@@ -50,6 +50,7 @@ class SGNSLoss(nn.Module):
         Randomly choose a value from self.unigram_table
         """
         rand_idxs = self.unigram_table.draw(N).to(self.device)
+        print(rand_idxs)
         return self.word_embeddings(rand_idxs).squeeze()
 
     def get_unigram_prob(self, token_idx):
@@ -57,8 +58,9 @@ class SGNSLoss(nn.Module):
 
     def generate_unigram_table(self):
         PDF = []
+        print(f'VOCABBB LEN {self.vocab_len}')
         for token_idx in range(0, self.vocab_len):
             PDF.append(self.get_unigram_prob(token_idx))
         # Generate the table from PDF
-        return AliasMultinomial(PDF)
+        return AliasMultinomial(PDF, self.device)
 

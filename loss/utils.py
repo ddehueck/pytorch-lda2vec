@@ -9,16 +9,17 @@ class AliasMultinomial(object):
     
     Code taken from: https://github.com/TropComplique/lda2vec-pytorch/blob/master/utils/alias_multinomial.py
     """
-    def __init__(self, probs):
+    def __init__(self, probs, device):
         """
         probs: a float tensor with shape [K].
             It represents probabilities of different outcomes.
             There are K outcomes. Probabilities sum to one.
         """
+        self.device = device
 
         K = len(probs)
-        self.q = t.zeros(K)#.cuda()
-        self.J = t.LongTensor([0]*K)#.cuda()
+        self.q = t.zeros(K).to(device)
+        self.J = t.LongTensor([0]*K).to(device)
 
         # sort the data into the outcomes with probabilities
         # that are larger and smaller than 1/K
@@ -46,18 +47,18 @@ class AliasMultinomial(object):
             else:
                 larger.append(large)
 
-        self.q.clamp(0.0, 1.0)
+        self.q.clamp(0, 1-1e-9)
         self.J.clamp(0, K - 1)
 
     def draw(self, N):
         """Draw N samples from the distribution."""
 
         K = self.J.size(0)
-        r = t.LongTensor(np.random.randint(0, K, size=N))#.cuda()
+        r = t.LongTensor(np.random.randint(0, K, size=N)).to(self.device)
         q = self.q.index_select(0, r)
         j = self.J.index_select(0, r)
         b = t.bernoulli(q)
         oq = r.mul(b.long())
         oj = j.mul((1 - b).long())
-        
+
         return oq + oj

@@ -19,9 +19,16 @@ class LDA2VecDataset(Dataset):
         self.idx2doc = dict()
         self.name = ''
 
-        if self.args.toy:
+        if args.toy:
             # Turns into a toy dataset
             self.file = self.files[:5]
+
+        if args.use_pretrained:
+            # Call self.vocab_ids[word] to get id of word vector
+            self.vocab_ids = args.nlp.vocab.strings
+            # Call self.id2vec.get(id, None) to get vector of word by id
+            self.key2row = args.nlp.vocab.vectors.key2row
+            self.n_oov = 0
 
     def __getitem__(self, index):
         return self._example_to_tensor(*self.examples[index])
@@ -61,6 +68,20 @@ class LDA2VecDataset(Dataset):
         except Exception as e:
             print(doc_str)
             raise Exception(e)
+
+        # When using pretrained vectors ensure there is a
+        # pretrained vector for each token
+        if self.args.use_pretrained:
+            cleaned_tokenized_doc = []
+            
+            for token in tokenized_doc:
+                token_id = self.vocab_ids[token]
+                pre_vec = self.key2row.get(token_id, None)
+                if pre_vec is not None:
+                    cleaned_tokenized_doc.append(token)
+
+            self.n_oov = len(tokenized_doc) - len(cleaned_tokenized_doc)
+            tokenized_doc = cleaned_tokenized_doc
 
         examples = []
         for i, token in enumerate(tokenized_doc):
@@ -221,13 +242,26 @@ class LDA2VecDataset(Dataset):
         return files
 
     def _example_to_tensor(self, example, target):
-        center = torch.tensor([
-            list(self.term_freq_dict.keys()).index(example[0])
-        ])
-        doc_id = torch.tensor([example[1]])
-        target = torch.tensor([
-            list(self.term_freq_dict.keys()).index(target)
-        ])
+        """
+        Takes raw example and turns it into tensor values
+
+        :params example: Tuple of form: (center word, document id)
+        :params target: String of the target word
+        :returns: A tuple of tensors
+        """
+        if self.args.use_pretrained:
+            center_id = self.vocab_ids[example[0]]
+            center_idx = self.key2row.get(center_id)
+
+            target_id = self.vocab_ids[target]
+            target_idx = self.key2row.get(target_id)
+
+        else:
+            center_idx = list(self.term_freq_dict.keys()).index(example[0])
+            target_idx = list(self.term_freq_dict.keys()).index(target)
+
+        doc_id = torch.tensor([int(example[1])])
+        center, target = torch.tensor([int(center_idx)]), torch.tensor([int(target_idx)])
         return ((center, doc_id), target)
 
 
