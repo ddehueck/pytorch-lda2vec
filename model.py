@@ -9,7 +9,6 @@ class Lda2vec(nn.Module):
     def __init__(self, vocab_size, num_docs, args):
         super(Lda2vec, self).__init__()
         self.args = args
-        self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
         self.topic_embeds = nn.Parameter(t.randn((args.embedding_len, args.num_topics)), requires_grad=True)
 
         if args.use_pretrained:

@@ -8,13 +8,11 @@ from .utils import AliasMultinomial
 class SGNSLoss(nn.Module):
     BETA = 0.75  # exponent to adjust sampling frequency
     NUM_SAMPLES = 15  # Taken from Moody's OG code
-    UNIGRAM_TABLE_SIZE = 10**5
-    EPSILON = 1e-5  # value to lower bound clamp to avoid -inf or 1/0
 
     def __init__(self, dataset, word_embeddings, device):
         super(SGNSLoss, self).__init__()
         self.dataset = dataset
-        self.vocab_len = len(dataset.term_freq_dict)
+        self.vocab_len = word_embeddings.weight.size()[0]
         self.word_embeddings = word_embeddings
         self.device = device
 
@@ -50,7 +48,6 @@ class SGNSLoss(nn.Module):
         Randomly choose a value from self.unigram_table
         """
         rand_idxs = self.unigram_table.draw(N).to(self.device)
-        print(rand_idxs)
         return self.word_embeddings(rand_idxs).squeeze()
 
     def get_unigram_prob(self, token_idx):
@@ -58,7 +55,6 @@ class SGNSLoss(nn.Module):
 
     def generate_unigram_table(self):
         PDF = []
-        print(f'VOCABBB LEN {self.vocab_len}')
         for token_idx in range(0, self.vocab_len):
             PDF.append(self.get_unigram_prob(token_idx))
         # Generate the table from PDF

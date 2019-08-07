@@ -13,7 +13,7 @@ class LDA2VecDataset(Dataset):
         self.args = args
         self.term_freq_dict = dict()
         self.files = self._get_files_in_dir(args.dataset_dir)
-        self.tokenizer = Tokenizer()
+        self.tokenizer = Tokenizer(args)
         self.examples = []
         self.n_examples = 0
         self.idx2doc = dict()
@@ -24,11 +24,11 @@ class LDA2VecDataset(Dataset):
             self.file = self.files[:5]
 
         if args.use_pretrained:
-            # Call self.vocab_ids[word] to get id of word vector
-            self.vocab_ids = args.nlp.vocab.strings
-            # Call self.id2vec.get(id, None) to get vector of word by id
+            # Multiple keys can map to the same vector!
+            # Call self.keys[word] to get key of word vector
+            self.keys = args.nlp.vocab.strings
+            # Call self.key2row.get(id, None) to get index of vector
             self.key2row = args.nlp.vocab.vectors.key2row
-            self.n_oov = 0
 
     def __getitem__(self, index):
         return self._example_to_tensor(*self.examples[index])
@@ -68,20 +68,6 @@ class LDA2VecDataset(Dataset):
         except Exception as e:
             print(doc_str)
             raise Exception(e)
-
-        # When using pretrained vectors ensure there is a
-        # pretrained vector for each token
-        if self.args.use_pretrained:
-            cleaned_tokenized_doc = []
-            
-            for token in tokenized_doc:
-                token_id = self.vocab_ids[token]
-                pre_vec = self.key2row.get(token_id, None)
-                if pre_vec is not None:
-                    cleaned_tokenized_doc.append(token)
-
-            self.n_oov = len(tokenized_doc) - len(cleaned_tokenized_doc)
-            tokenized_doc = cleaned_tokenized_doc
 
         examples = []
         for i, token in enumerate(tokenized_doc):
@@ -171,6 +157,7 @@ class LDA2VecDataset(Dataset):
         :param tf_dict: A {"token": frequency,} dict
         :returns: None
         """
+
         if token not in tf_dict.keys():
             tf_dict[token] = 1
         else:
@@ -250,10 +237,10 @@ class LDA2VecDataset(Dataset):
         :returns: A tuple of tensors
         """
         if self.args.use_pretrained:
-            center_id = self.vocab_ids[example[0]]
+            center_id = self.keys[example[0]]
             center_idx = self.key2row.get(center_id)
 
-            target_id = self.vocab_ids[target]
+            target_id = self.keys[target]
             target_idx = self.key2row.get(target_id)
 
         else:

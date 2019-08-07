@@ -3,13 +3,16 @@ import re
 
 class Tokenizer:
     
-    def __init__(self, custom_stop=[]):
+    def __init__(self, args, custom_stop=[]):
+        self.args = args
         self.custom_stop = custom_stop
-        # Define pipeline
-        self.nlp = spacy.load("en_core_web_sm", disable=[])
-        # Merge named entities
-        merge_ents = self.nlp.create_pipe("merge_entities")
-        self.nlp.add_pipe(merge_ents)
+        # Define pipeline - use different nlp is using pretrained
+        self.nlp = args.nlp if args.nlp is not None else spacy.load("en_core_web_sm", disable=[])
+        
+        if not args.use_pretrained:
+            # Merge named entities
+            merge_ents = self.nlp.create_pipe("merge_entities")
+            self.nlp.add_pipe(merge_ents)
 
 
     def tokenize_doc(self, doc_str):
@@ -27,12 +30,15 @@ class Tokenizer:
 
         # Filter 
         filtered_doc = filter(self.is_valid_token, spacy_doc)
-        # Convert to text make lowercase
-        clean_doc = [t.text.lower().strip() for t in filtered_doc]
-        # Only allow characters in the alphabet and '_'
-        clean_doc = [re.sub('[^a-zA-Z]', '', t) for t in clean_doc]
-        # Remove any resulting empty indices
-        clean_doc = [t for t in clean_doc if len(t) > 0]
+        clean_doc = [t.text for t in filtered_doc]
+
+        if not self.args.use_pretrained:
+            # Convert to text make lowercase
+            clean_doc = [t.lower().strip() for t in clean_doc]
+            # Only allow characters in the alphabet and '_'
+            clean_doc = [re.sub('[^a-zA-Z]', '', t) for t in clean_doc]
+            # Remove any resulting empty indices
+            clean_doc = [t for t in clean_doc if len(t) > 0]
 
         return clean_doc
 
@@ -50,6 +56,14 @@ class Tokenizer:
             return False
         if token.is_stop or token.text in self.custom_stop:
             return False
+
+        if self.args.use_pretrained:
+            # Only use tokens with vectors
+            if not token.has_vector:
+                return False
+            if token.is_oov:
+                return False
+
         return True
 
 

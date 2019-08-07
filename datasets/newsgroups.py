@@ -10,7 +10,7 @@ class NewsgroupsDataset(LDA2VecDataset):
         LDA2VecDataset.__init__(self, args)
         self.name = '20 News Groups Dataset'
         self.files = self.read_files_from_scikit()
-        self.tokenizer = Tokenizer(custom_stop=['article', 'writes'])
+        self.tokenizer = Tokenizer(args, custom_stop=['article', 'writes'])
 
         if args.load_dataset is not None:
             # Load dataset from .pth file
@@ -25,9 +25,6 @@ class NewsgroupsDataset(LDA2VecDataset):
             args.save_dataset = False
         else:    
             self.generate_examples_multi()
-
-        print(f'There were {self.n_oov} tokens found that were out of vocabulary.')
-        print(f'There were {len(list(self.term_freq_dict.keys()))} tokens in this vocabulary.')
 
     def read_files_from_scikit(self):
         """
