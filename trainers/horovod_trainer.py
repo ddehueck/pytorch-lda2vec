@@ -38,6 +38,7 @@ class HorovodTrainer(LDA2VecTrainer):
         self.logger.info("Loading Dataset...")
         dataset = self.args.dataset(self.args)
         self.logger.info(f"Loaded Dataset: {dataset.name}")
+
         sampler = DistributedSampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
             shuffle=False, sampler=sampler, num_workers=self.args.workers, pin_memory=True)
@@ -46,8 +47,15 @@ class HorovodTrainer(LDA2VecTrainer):
             self.logger.info("Beginning to save dataset.")
             self.saver.save_dataset(dataset)
             self.logger.info("Finished saving dataset")
-            
-        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args).cuda()
+
+        
+        pretrained_vecs = None
+        if self.args.use_pretrained:
+            pretrained_vecs = utils.get_pretrained_vecs(dataset, self.args.nlp)
+
+        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args,
+                pretrained_vecs=pretrained_vecs).cuda()
+
         optimizer = optim.SGD(model.parameters(), lr=self.args.lr * hvd.size(), momentum=self.args.momentum)
 
         # Distribute Optimizer
@@ -137,7 +145,7 @@ class HorovodTrainer(LDA2VecTrainer):
 
         self.logger.info(f'DOCUMENT PROPORTIIONS:\n {proportions}')    
         self.logger.info(f'AVERAGE SPARSITY SCORE: {avg_s_score}\n')   
-        self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, global_step)
+        self.writer.add_scalar('avg_doc_prop_sparsity_score', avg_s_score, epoch)
 
         _, max_indices = torch.max(proportions, dim=1)
         max_indices = list(max_indices.cpu().numpy())
@@ -145,23 +153,24 @@ class HorovodTrainer(LDA2VecTrainer):
         
         self.logger.info(f'MAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
         self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')
+        
+        if epoch % self.args.save_step == 0:
+            # Visualize document embeddings
+            self.writer.add_embedding(
+                model.get_doc_vectors(),
+                global_step=epoch,
+                tag=f'de_epoch_{epoch}',
+            )
 
-       # Visualize document embeddings
-        self.writer.add_embedding(
-            model.get_doc_vectors(),
-            global_step=epoch,
-            tag=f'de_epoch_{epoch}',
-        )
-
-        # Save checkpoint
-        self.logger.info(f'Beginning to save checkpoint')
-        self.saver.save_checkpoint({
-            'epoch': epoch + 1,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optim.state_dict(),
-            'loss': loss,
-        })
-        self.logger.info(f'Finished saving checkpoint')
+            # Save checkpoint
+            self.logger.info(f'Beginning to save checkpoint')
+            self.saver.save_checkpoint({
+                'epoch': epoch + 1,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optim.state_dict(),
+                'loss': loss,
+            })
+            self.logger.info(f'Finished saving checkpoint')
 
 
     def log_step(self, model, epoch, time, global_step, diri_loss, sgns_loss, doc_id, center, target):
@@ -184,4 +193,4 @@ class HorovodTrainer(LDA2VecTrainer):
         
         self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
             {torch.index_select(model.word_embeds.weight.grad, 0, center.squeeze())}')
-        self.logger.info(f'\n{torch.index_select(model.word_embeds.weight.grad, 0, target.squeeze())}'
+        self.logger.info(f'\n{torch.index_select(model.word_embeds.weight.grad, 0, target.squeeze())}')

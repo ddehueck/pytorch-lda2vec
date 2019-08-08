@@ -27,18 +27,14 @@ class Tokenizer:
 
         # Send doc_str through pipeline
         spacy_doc = self.nlp(doc_str)
-
         # Filter 
         filtered_doc = filter(self.is_valid_token, spacy_doc)
-        clean_doc = [t.text for t in filtered_doc]
-
-        if not self.args.use_pretrained:
-            # Convert to text make lowercase
-            clean_doc = [t.lower().strip() for t in clean_doc]
-            # Only allow characters in the alphabet and '_'
-            clean_doc = [re.sub('[^a-zA-Z]', '', t) for t in clean_doc]
-            # Remove any resulting empty indices
-            clean_doc = [t for t in clean_doc if len(t) > 0]
+        # Convert to text make lowercase
+        clean_doc = [t.text.lower().strip() for t in filtered_doc]
+        # Only allow characters in the alphabet and '_'
+        clean_doc = [re.sub('[^a-zA-Z]', '', t) for t in clean_doc]
+        # Remove any resulting empty indices
+        clean_doc = [t for t in clean_doc if len(t) > 0]
 
         return clean_doc
 

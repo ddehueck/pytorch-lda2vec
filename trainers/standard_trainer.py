@@ -29,8 +29,14 @@ class Trainer(LDA2VecTrainer):
         self.dataloader = DataLoader(self.dataset, batch_size=args.batch_size,
             shuffle=True, num_workers=args.workers)
 
+        pretrained_vecs = None
+        if self.args.use_pretrained:
+            pretrained_vecs = utils.get_pretrained_vecs(self.dataset, self.args.nlp)
+
         # Load model and training necessities
-        self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args)
+        self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args,
+            pretrained_vecs=pretrained_vecs)
+
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
         self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.args.device)
         self.dirichlet = DirichletLoss(self.args)

@@ -79,8 +79,6 @@ def get_args():
                         (default: True)')
     parser.add_argument('--seed', type=int, default=42, metavar='S',
                         help='random seed (default: 42)')
-    parser.add_argument('--log-step', type=int, default=250, help='Step at which for every step training info\
-                        is logged. (default: 250)')
     parser.add_argument('--clip', type=float, default=5.0, help='Value to keep gradient between (-val, +val)\
                         (default: 5)')
     
@@ -97,6 +95,10 @@ def get_args():
                         help='Boolean to save log output to a file.')
     parser.add_argument('--load-dataset', type=str, default=None,
                         help='Put the path to dataset file to use.')
+    parser.add_argument('--log-step', type=int, default=250, help='Step at which for every step training info\
+                        is logged. (default: 250)')
+    parser.add_argument('--save-step', type=int, default=20, help='Epoch step to save a checkpoint - should make\
+                         --epochs a multiple of this value. (default: 20)')
 
     """
     Training Settings

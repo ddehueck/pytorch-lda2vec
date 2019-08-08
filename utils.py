@@ -18,3 +18,17 @@ def get_sparsity_score(vec):
     norm_score = sum(abs(vec.float().to('cpu') - uniform_vec.float())) / max_sparsity
     
     return norm_score.item()
+
+
+def get_pretrained_vecs(dataset, nlp):
+    """
+    Build word embedding weights based on pretrained vectors
+
+    :params dataset: Dataset to base vocab on
+    :params nlp: A spaCy NLP pipeline with pretrained vectors - md or lg
+    :returns: A tensor of size: vocab_len x embed_len
+    """
+
+    vocab = list(dataset.term_freq_dict.keys())
+    vectors = [nlp.vocab[v].vector for v in vocab]
+    return t.tensor(vectors)

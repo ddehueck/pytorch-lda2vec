@@ -6,17 +6,15 @@ import spacy
 
 class Lda2vec(nn.Module):
 
-    def __init__(self, vocab_size, num_docs, args):
+    def __init__(self, vocab_size, num_docs, args, pretrained_vecs=None):
         super(Lda2vec, self).__init__()
         self.args = args
         self.topic_embeds = nn.Parameter(t.randn((args.embedding_len, args.num_topics)), requires_grad=True)
 
         if args.use_pretrained:
-            # Trainer adds nlp to args if using pretrained
-            vocab_size, embed_len = args.nlp.vocab.vectors.shape
-            glove_vecs = t.from_numpy(args.nlp.vocab.vectors.data)
+            assert pretrained_vecs is not None, "pretrained_vecs cannot be None"
             # Initialize from pretrained
-            self.word_embeds = nn.Embedding(vocab_size, embed_len).from_pretrained(glove_vecs, freeze=False)
+            self.word_embeds = nn.Embedding(vocab_size, args.embedding_len).from_pretrained(pretrained_vecs, freeze=False)
         else:
             self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
 
@@ -69,5 +67,3 @@ class Lda2vec(nn.Module):
         doc_vecs = t.matmul(self.topic_embeds, t.t(proportions))
 
         return t.t(doc_vecs)
-
-

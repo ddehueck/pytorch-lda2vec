@@ -23,13 +23,6 @@ class LDA2VecDataset(Dataset):
             # Turns into a toy dataset
             self.file = self.files[:5]
 
-        if args.use_pretrained:
-            # Multiple keys can map to the same vector!
-            # Call self.keys[word] to get key of word vector
-            self.keys = args.nlp.vocab.strings
-            # Call self.key2row.get(id, None) to get index of vector
-            self.key2row = args.nlp.vocab.vectors.key2row
-
     def __getitem__(self, index):
         return self._example_to_tensor(*self.examples[index])
 
@@ -236,16 +229,8 @@ class LDA2VecDataset(Dataset):
         :params target: String of the target word
         :returns: A tuple of tensors
         """
-        if self.args.use_pretrained:
-            center_id = self.keys[example[0]]
-            center_idx = self.key2row.get(center_id)
-
-            target_id = self.keys[target]
-            target_idx = self.key2row.get(target_id)
-
-        else:
-            center_idx = list(self.term_freq_dict.keys()).index(example[0])
-            target_idx = list(self.term_freq_dict.keys()).index(target)
+        center_idx = list(self.term_freq_dict.keys()).index(example[0])
+        target_idx = list(self.term_freq_dict.keys()).index(target)
 
         doc_id = torch.tensor([int(example[1])])
         center, target = torch.tensor([int(center_idx)]), torch.tensor([int(target_idx)])
