@@ -56,7 +56,7 @@ class HorovodTrainer(LDA2VecTrainer):
         model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args,
                 pretrained_vecs=pretrained_vecs).cuda()
 
-        optimizer = optim.SGD(model.parameters(), lr=self.args.lr * hvd.size(), momentum=self.args.momentum)
+        optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())
 
         # Distribute Optimizer
         compression = hvd.Compression.fp16 if self.args.compression else hvd.Compression.none
