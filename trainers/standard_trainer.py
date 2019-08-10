@@ -37,6 +37,8 @@ class Trainer(LDA2VecTrainer):
         self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args,
             pretrained_vecs=pretrained_vecs)
 
+        print(f'Current size of word embeds weights is {self.model.word_embeds.weight.size()}')
+
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
         self.sgns = SGNSLoss(self.dataset, self.model.word_embeds, self.args.device)
         self.dirichlet = DirichletLoss(self.args)

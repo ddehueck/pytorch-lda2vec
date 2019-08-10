@@ -9,7 +9,8 @@ class Lda2vec(nn.Module):
     def __init__(self, vocab_size, num_docs, args, pretrained_vecs=None):
         super(Lda2vec, self).__init__()
         self.args = args
-        self.topic_embeds = nn.Parameter(t.randn((args.embedding_len, args.num_topics)), requires_grad=True)
+        #self.topic_embeds = nn.Parameter(t.randn((args.embedding_len, args.num_topics)), requires_grad=True)
+        self.topic_embeds = nn.Parameter(t.randn((args.num_topics, args.embedding_len)), requires_grad=True)
 
         if args.use_pretrained:
             assert pretrained_vecs is not None, "pretrained_vecs cannot be None"
@@ -27,7 +28,7 @@ class Lda2vec(nn.Module):
             self.doc_weights = nn.Embedding(num_docs, args.num_topics)
 
         # Reqularization Layer
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.2)
 
     def forward(self, x):
         # x should take the form of: (center word, doc_id)
@@ -40,13 +41,11 @@ class Lda2vec(nn.Module):
         proportions = F.softmax(doc_weights, dim=1)
 
         # 2. Multiply by topic embeddings to get doc vector
-        doc_vecs = t.matmul(self.topic_embeds, t.transpose(proportions, 1, 2))
-        doc_vecs = t.transpose(doc_vecs, 1, 2)
-
         # Apply regularization
         if self.args.use_dropout:
-            word_vecs = self.dropout(word_vecs)
-            doc_vecs = self.dropout(doc_vecs)
+            doc_vecs = t.matmul(proportions, self.dropout(self.topic_embeds))
+        else:
+            doc_vecs = t.matmul(proportions, self.topic_embeds)
 
         # Combine into context vector - sum
         context_vecs = t.add(word_vecs, doc_vecs)
@@ -64,6 +63,6 @@ class Lda2vec(nn.Module):
         Multiply by proportions by topic embeddings to get document vectors
         """
         proportions = self.get_proportions()
-        doc_vecs = t.matmul(self.topic_embeds, t.t(proportions))
+        doc_vecs = t.matmul(proportions, self.topic_embeds)
 
-        return t.t(doc_vecs)
+        return doc_vecs

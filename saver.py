@@ -46,9 +46,12 @@ class Saver:
         :param dataset: An LDA2VecDataset object
         :returns: None
         """
+        doc_lengths = [len(dataset.read_file(f)) for f in dataset.files]
+        
         self.save_state({
             'examples': dataset.examples,
             'idx2doc': dataset.idx2doc,
-            'term_freq_dict': dataset.term_freq_dict
+            'term_freq_dict': dataset.term_freq_dict,
+            'doc_lengths': doc_lengths
         }, 'dataset.pth')
 

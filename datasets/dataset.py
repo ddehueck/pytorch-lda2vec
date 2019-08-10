@@ -14,6 +14,7 @@ class LDA2VecDataset(Dataset):
         self.term_freq_dict = dict()
         self.files = self._get_files_in_dir(args.dataset_dir)
         self.tokenizer = Tokenizer(args)
+        self.removed_infrequent_tokens = False
         self.examples = []
         self.n_examples = 0
         self.idx2doc = dict()
@@ -106,6 +107,17 @@ class LDA2VecDataset(Dataset):
         pool.close()
         pool.join()
 
+        # Remove any tokens with a frequency of less than 10
+        # Remove examples too by regenerating
+        if not self.removed_infrequent_tokens:
+            tokens_to_remove = set([k for k in self.term_freq_dict if self.term_freq_dict[k] < 10])
+            self.tokenizer = Tokenizer(self.args, custom_stop=tokens_to_remove)
+            self.removed_infrequent_tokens = True
+
+            # Reset and regenerate examples!
+            self.examples = []
+            self.term_freq_dict = dict()
+            self.generate_examples_multi()
 
     def _generate_examples_worker(self, file_batch):
         """
@@ -114,6 +126,7 @@ class LDA2VecDataset(Dataset):
         Worker to generate examples in a map reduce paradigm
 
         :param file_batch: List of files - a subset of self.files
+        :returns: list of examples and a term frequency dict for its batch
         """
         tf_dict = dict()
         examples = []
