@@ -41,7 +41,7 @@ class Saver:
         Save Dataset
 
         Saves all information needed from an LDA2VecDataset needed to
-        recover the dataset.
+        recover the training dataset.
 
         :param dataset: An LDA2VecDataset object
         :returns: None
@@ -49,7 +49,6 @@ class Saver:
         doc_lengths = [len(dataset.read_file(f)) for f in dataset.files]
         
         self.save_state({
-            'examples': dataset.examples,
             'idx2doc': dataset.idx2doc,
             'term_freq_dict': dataset.term_freq_dict,
             'doc_lengths': doc_lengths

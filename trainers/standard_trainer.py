@@ -18,7 +18,7 @@ class Trainer(LDA2VecTrainer):
     def __init__(self, args):
         LDA2VecTrainer.__init__(self, args)
         # Load data
-        self.dataset = args.dataset(args)
+        self.dataset = args.dataset(args, self.saver)
         self.logger.info("Finished loading dataset")
 
         if args.save_dataset:

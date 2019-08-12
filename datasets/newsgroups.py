@@ -6,25 +6,12 @@ import torch
 
 class NewsgroupsDataset(LDA2VecDataset):
 
-    def __init__(self, args):
-        LDA2VecDataset.__init__(self, args)
+    def __init__(self, args, saver):
+        LDA2VecDataset.__init__(self, args, saver)
         self.name = '20 News Groups Dataset'
         self.files = self.read_files_from_scikit()
         self.tokenizer = Tokenizer(args, custom_stop={'article', 'writes'})
-
-        if args.load_dataset is not None:
-            # Load dataset from .pth file
-            dataset = torch.load(args.load_dataset)
-
-            # Load Dataset Object
-            self.examples = dataset['examples']
-            self.idx2doc = dataset['idx2doc']
-            self.term_freq_dict = dataset['term_freq_dict']
-
-            # Already saved
-            args.save_dataset = False
-        else:    
-            self.generate_examples_multi()
+        self.generate_examples_multi()
 
         print(f'There were {len(list(self.term_freq_dict.keys()))} tokens generated')
 

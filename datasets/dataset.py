@@ -1,5 +1,6 @@
 import os
 import torch
+import uuid
 import multiprocessing
 from tqdm import tqdm
 from torch.utils.data.dataset import Dataset
@@ -9,26 +10,79 @@ from multiprocessing.dummy import Pool as ThreadPool
 class LDA2VecDataset(Dataset):
     BETA = 0.75
 
-    def __init__(self, args):
+    def __init__(self, args, saver):
         self.args = args
+        self.saver = saver
         self.term_freq_dict = dict()
         self.files = self._get_files_in_dir(args.dataset_dir)
         self.tokenizer = Tokenizer(args)
         self.removed_infrequent_tokens = False
-        self.examples = []
-        self.n_examples = 0
         self.idx2doc = dict()
         self.name = ''
+        self.saved_ds_dir = 'saved_datasets/'
+        self.block_files = {}
 
         if args.toy:
             # Turns into a toy dataset
             self.file = self.files[:5]
+            self.removed_infrequent_tokens = True
+
 
     def __getitem__(self, index):
-        return self._example_to_tensor(*self.examples[index])
+        # Get file from index
+        num_examples = 0
+        for file in self.block_files:
+            block_length = self.block_files[file]
+            num_examples += block_length
+            if index < num_examples: 
+                # Example in current file
+                break
+        
+        in_file_index = index - (num_examples - block_length)
+        examples = torch.load(file)[in_file_index]
+        return self._example_to_tensor(*examples)
+
 
     def __len__(self):
-        return len(self.examples)
+        return sum(list(self.block_files.values()))
+
+
+    def _load_dataset(self):
+        print(f'Loading dataset from: {self.saved_ds_dir}')
+
+        # Set block files
+        metadata_file = f'{self.saved_ds_dir}metadata.pth' 
+        files = self._get_files_in_dir(self.saved_ds_dir)
+        files.remove(metadata_file) 
+        for f in files:
+            self.block_files[f] = len(torch.load(f))
+
+        # Load metadata in
+        metadata = torch.load(metadata_file)
+        self.idx2doc = metadata['idx2doc']
+        self.term_freq_dict = metadata['term_freq_dict']
+        print('Loaded Dataset!')
+    
+
+    def _save_training_examples(self, examples):
+        # Create save to directory
+        if not os.path.exists(self.saved_ds_dir):
+            os.makedirs(self.saved_ds_dir)
+        
+        # Save to np file   
+        filename = f'{self.saved_ds_dir}/block-{uuid.uuid4()}.dat'
+        torch.save(examples, filename)
+        self.block_files[filename] = len(examples)
+
+
+    def _save_metadata(self):
+        doc_lengths = [len(self.read_file(f)) for f in self.files]
+        torch.save({
+            'idx2doc': self.idx2doc,
+            'term_freq_dict': self.term_freq_dict,
+            'doc_lengths': doc_lengths
+        }, f'{self.saved_ds_dir}metadata.pth')
+
 
     def read_file(self, f):
         """
@@ -77,10 +131,7 @@ class LDA2VecDataset(Dataset):
             #   center word: token
             #   document id: doc_id
             #   context_word: tokenized_doc[context_word_pos]
-            # In the form of:
-            # (token, doc_id), context - follows form: (input, target)
-            in_tuple = (token, doc_id)
-            new_examples = [(in_tuple, ctxt) for ctxt in context_words]
+            new_examples = [(token, doc_id, ctxt) for ctxt in context_words]
 
             # Add to class
             examples.extend(new_examples)
@@ -88,20 +139,27 @@ class LDA2VecDataset(Dataset):
 
 
     def generate_examples_multi(self):
+        self.saved_ds_dir = f'{self.saved_ds_dir}{"_".join(self.name.lower().split(" "))}/'
+        if self.args.toy:
+            self.saved_ds_dir = self.saved_ds_dir[:-1] + '_toy/'
+
+        if os.path.exists(self.saved_ds_dir):
+            # Data already exists - load it!
+            self._load_dataset()
+            return
+        
         pool = ThreadPool(multiprocessing.cpu_count())
         batch_size = self.args.file_batch_size
         file_batches = self._batch_files(batch_size)
 
         print('\nGenerating Examples for Dataset (multi-threaded)...')
-        for results in tqdm(
+        for tf_dict in tqdm(
             pool.imap_unordered(
                 self._generate_examples_worker,
                 file_batches),
             total=len(self.files)//batch_size + 1):
 
-            # Reduce results into final locations
-            examples, tf_dict = results
-            self.examples.extend(examples)
+            # Reduce each tf_dict into final location
             self._reduce_tf_dict(tf_dict)
 
         pool.close()
@@ -111,29 +169,40 @@ class LDA2VecDataset(Dataset):
         # Remove examples too by regenerating
         if not self.removed_infrequent_tokens:
             tokens_to_remove = set([k for k in self.term_freq_dict if self.term_freq_dict[k] < 10])
-            self.tokenizer = Tokenizer(self.args, custom_stop=tokens_to_remove)
+            custom_stop = self.tokenizer.custom_stop.union(tokens_to_remove)
+            
+            self.tokenizer = Tokenizer(self.args, custom_stop=custom_stop)
             self.removed_infrequent_tokens = True
 
             # Reset and regenerate examples!
-            self.examples = []
             self.term_freq_dict = dict()
             self.generate_examples_multi()
+        
+        if self.removed_infrequent_tokens:
+            self._save_metadata()
+
 
     def _generate_examples_worker(self, file_batch):
         """
         Generate examples worker
 
         Worker to generate examples in a map reduce paradigm
+        Saves the generated example to a batch file
 
         :param file_batch: List of files - a subset of self.files
-        :returns: list of examples and a term frequency dict for its batch
+        :returns: a term frequency dict for its batch
         """
         tf_dict = dict()
         examples = []
 
         for f in file_batch:
             examples.extend(self.generate_examples_from_file(f, tf_dict))
-        return examples, tf_dict
+
+        # Save batch to file after infrequent tokens are removed
+        if self.removed_infrequent_tokens:
+            self._save_training_examples(examples)
+
+        return tf_dict
 
 
     def _batch_files(self, batch_size):
@@ -234,19 +303,19 @@ class LDA2VecDataset(Dataset):
 
         return files
 
-    def _example_to_tensor(self, example, target):
+    def _example_to_tensor(self, center, doc_id, target):
         """
         Takes raw example and turns it into tensor values
 
-        :params example: Tuple of form: (center word, document id)
+        :params center: String of the center word
+        :params doc_id: Document id training example is from
         :params target: String of the target word
         :returns: A tuple of tensors
         """
-        center_idx = list(self.term_freq_dict.keys()).index(example[0])
+        center_idx = list(self.term_freq_dict.keys()).index(center)
         target_idx = list(self.term_freq_dict.keys()).index(target)
 
-        doc_id = torch.tensor([int(example[1])])
-        center, target = torch.tensor([int(center_idx)]), torch.tensor([int(target_idx)])
+        center, doc_id, target = torch.tensor([int(center_idx)]), torch.tensor([int(doc_id)]), torch.tensor([int(target_idx)])
         return ((center, doc_id), target)
 
 

@@ -3,7 +3,7 @@ import re
 
 class Tokenizer:
     
-    def __init__(self, args, custom_stop=set()):
+    def __init__(self, args, custom_stop={}):
         self.args = args
         self.custom_stop = custom_stop
         # Define pipeline - use different nlp is using pretrained
@@ -37,7 +37,6 @@ class Tokenizer:
         clean_doc = [t for t in clean_doc if len(t) > 0]
         # Filter out any custom stop
         clean_doc = [t for t in clean_doc if t not in self.custom_stop]
-
         return clean_doc
 
 
@@ -52,7 +51,9 @@ class Tokenizer:
             return False
         if token.like_email:
             return False
-        if token.is_stop or token.text in self.custom_stop:
+        if token.is_stop:
+            return False
+        if token.text in self.custom_stop:
             return False
 
         if self.args.use_pretrained:
