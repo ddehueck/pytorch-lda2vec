@@ -3,6 +3,7 @@ experiments/
 data/
 dataset.pth
 nohup.out
+saved_datasets/
 
 # Vim
 *.swp
