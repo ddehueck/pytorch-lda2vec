@@ -48,13 +48,13 @@ class LDA2VecDataset(Dataset):
 
 
     def _load_dataset(self):
-        print(f'Loading dataset from: {self.saved_ds_dir}')
+        print(f'Loading dataset from: {self._get_saved_ds_dir()}')
 
         # Set block files
-        metadata_file = f'{self.saved_ds_dir}metadata.pth' 
-        files = self._get_files_in_dir(self.saved_ds_dir)
+        metadata_file = f'{self._get_saved_ds_dir()}metadata.pth' 
+        files = self._get_files_in_dir(self._get_saved_ds_dir())
         files.remove(metadata_file) 
-        for f in files:
+        for f in tqdm(files):
             self.block_files[f] = len(torch.load(f))
 
         # Load metadata in
@@ -66,11 +66,11 @@ class LDA2VecDataset(Dataset):
 
     def _save_training_examples(self, examples):
         # Create save to directory
-        if not os.path.exists(self.saved_ds_dir):
-            os.makedirs(self.saved_ds_dir)
+        if not os.path.exists(self._get_saved_ds_dir()):
+            os.makedirs(self._get_saved_ds_dir())
         
         # Save to np file   
-        filename = f'{self.saved_ds_dir}/block-{uuid.uuid4()}.dat'
+        filename = f'{self._get_saved_ds_dir()}/block-{uuid.uuid4()}.dat'
         torch.save(examples, filename)
         self.block_files[filename] = len(examples)
 
@@ -81,7 +81,14 @@ class LDA2VecDataset(Dataset):
             'idx2doc': self.idx2doc,
             'term_freq_dict': self.term_freq_dict,
             'doc_lengths': doc_lengths
-        }, f'{self.saved_ds_dir}metadata.pth')
+        }, f'{self._get_saved_ds_dir()}metadata.pth')
+
+
+    def _get_saved_ds_dir(self):
+        direc = f'{self.saved_ds_dir}{"_".join(self.name.lower().split(" "))}/'
+        if self.args.toy:
+            direc = direc[:-1] + '_toy/'
+        return direc
 
 
     def read_file(self, f):
@@ -139,11 +146,7 @@ class LDA2VecDataset(Dataset):
 
 
     def generate_examples_multi(self):
-        self.saved_ds_dir = f'{self.saved_ds_dir}{"_".join(self.name.lower().split(" "))}/'
-        if self.args.toy:
-            self.saved_ds_dir = self.saved_ds_dir[:-1] + '_toy/'
-
-        if os.path.exists(self.saved_ds_dir):
+        if os.path.exists(self._get_saved_ds_dir()):
             # Data already exists - load it!
             self._load_dataset()
             return
