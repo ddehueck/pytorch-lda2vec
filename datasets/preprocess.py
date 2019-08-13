@@ -3,7 +3,7 @@ import re
 
 class Tokenizer:
     
-    def __init__(self, args, custom_stop={}):
+    def __init__(self, args, custom_stop=set()):
         self.args = args
         self.custom_stop = custom_stop
         # Define pipeline - use different nlp is using pretrained

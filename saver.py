@@ -36,21 +36,3 @@ class Saver:
         filename = 'checkpoint_' + str(state['epoch']) + '.pth'
         self.save_state(state, filename)
 
-    def save_dataset(self, dataset):
-        """
-        Save Dataset
-
-        Saves all information needed from an LDA2VecDataset needed to
-        recover the training dataset.
-
-        :param dataset: An LDA2VecDataset object
-        :returns: None
-        """
-        doc_lengths = [len(dataset.read_file(f)) for f in dataset.files]
-        
-        self.save_state({
-            'idx2doc': dataset.idx2doc,
-            'term_freq_dict': dataset.term_freq_dict,
-            'doc_lengths': doc_lengths
-        }, 'dataset.pth')
-
