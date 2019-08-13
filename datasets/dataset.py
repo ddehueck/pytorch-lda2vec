@@ -319,7 +319,7 @@ class LDA2VecDataset(Dataset):
         target_idx = list(self.term_freq_dict.keys()).index(target)
 
         center, doc_id, target = torch.tensor([int(center_idx)]), torch.tensor([int(doc_id)]), torch.tensor([int(target_idx)])
-        return ((center, doc_id), target)
+        return center, doc_id, target
 
 
 

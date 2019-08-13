@@ -21,11 +21,6 @@ class Trainer(LDA2VecTrainer):
         self.dataset = args.dataset(args, self.saver)
         self.logger.info("Finished loading dataset")
 
-        if args.save_dataset:
-            self.logger.info("Beginning to save dataset.")
-            self.saver.save_dataset(self.dataset)
-            self.logger.info("Finished saving dataset")
-
         self.dataloader = DataLoader(self.dataset, batch_size=args.batch_size,
             shuffle=True, num_workers=args.workers)
 
@@ -54,7 +49,8 @@ class Trainer(LDA2VecTrainer):
 
         # Add graph to tensorboard
         # TODO: Get working on multi-gpu stuff
-        self.writer.add_graph(self.model, iter(self.dataloader).next()[0])
+        center_id, doc_id, target_id = iter(self.dataloader).next()
+        self.writer.add_graph(self.model, input_to_model=(center_id, doc_id))
 
         # Load checkpoint if need be
         if args.resume is not None:
@@ -78,18 +74,18 @@ class Trainer(LDA2VecTrainer):
         for epoch in range(self.begin_epoch, self.args.epochs):
             
             self.logger.info('Beginning epoch: {}/{}'.format(epoch+1, self.args.epochs))
-            running_loss, running_sgns_loss, running_diri_loss = 0.0, 0.0, 0.0
+            running_sgns_loss, running_diri_loss = 0.0, 0.0
             global_step = epoch * len(self.dataloader)
             num_examples = 0
             
             for i, data in enumerate(tqdm(self.dataloader)):
                 # unpack data
-                (center, doc_id), target = data
+                center, doc_id, target = data
                 center, doc_id, target = center.to(self.args.device), doc_id.to(self.args.device), target.to(self.args.device)
                 # Remove accumulated gradients
                 self.optim.zero_grad()
                 # Get context vector: word + doc
-                context = self.model((center, doc_id))  # context - [batch_size x embed_len x 1]
+                context = self.model(center, doc_id)  # context - [batch_size x embed_len x 1]
                 # Calc loss: SGNS + Dirichlet
                 sgns_loss = self.sgns(context, self.model.word_embeds(target))  # target - [batch_size x 1]
                 diri_loss = self.dirichlet(self.model.doc_weights(doc_id))  # doc_id - [batch_size x 1]
@@ -100,7 +96,6 @@ class Trainer(LDA2VecTrainer):
                 self.optim.step()
 
                 # Keep track of loss
-                running_loss += loss.item()
                 running_sgns_loss += sgns_loss.item()
                 running_diri_loss += diri_loss.item()
                 global_step += 1
@@ -108,11 +103,10 @@ class Trainer(LDA2VecTrainer):
                 
                 # Log at step
                 if global_step % self.args.log_step == 0:
-                    norm = (i + 1) * num_examples
+                    norm = num_examples
                     self.log_step(epoch, global_step, running_diri_loss/norm, running_sgns_loss/norm, doc_id, center, target)
             
-            norm = (i + 1) * num_examples
-            self.log_and_save_epoch(epoch, running_loss/norm)
+            self.log_and_save_epoch(epoch, (running_sgns_loss + running_diri_loss)/num_examples)
 
         self.writer.close()
 

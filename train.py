@@ -51,8 +51,8 @@ def get_args():
     """
     Model Parameters
     """
-    parser.add_argument('--num-topics', type=int, default=32, help='Number of topics\
-                        to learn during training (default: 32)')
+    parser.add_argument('--num-topics', type=int, default=20, help='Number of topics\
+                        to learn during training (default: 20)')
     parser.add_argument('--embedding-len', type=int, default=128, help='Length of\
                         embeddings in model (default: 128)')
     parser.add_argument('--uni-doc-init', type=str_to_bool, default=False, help='Have doc\
