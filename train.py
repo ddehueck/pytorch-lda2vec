@@ -35,9 +35,6 @@ def get_args():
                         help='dataset to use when training (default: freetext)')
     parser.add_argument('--dataset-dir', type=str, default='data/',
                         help='dataset directory (default: data/)')
-    parser.add_argument('--save-dataset', type=str_to_bool, default=False,
-                        help='Boolean value to save dataset to a file\
-                        (default: False)')
     parser.add_argument('--workers', type=int, default=4, metavar='N',
                        help='dataloader threads (default: 4)')
     parser.add_argument('--window-size', type=int, default=5, help='Window size\
@@ -72,8 +69,6 @@ def get_args():
                         metavar='N', help='number of examples in a training batch (default: 4096)')
     parser.add_argument('--lr', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
-    parser.add_argument('--momentum', type=float, default=0.9,
-                        metavar='M', help='momentum (default: 0.9)')
     parser.add_argument('--use-dropout', type=str_to_bool, default=True,
                         help='Boolean value to apply dropout during training\
                         (default: True)')

@@ -6,8 +6,8 @@ import torch
 
 class NewsgroupsDataset(LDA2VecDataset):
 
-    def __init__(self, args, saver):
-        LDA2VecDataset.__init__(self, args, saver)
+    def __init__(self, args):
+        LDA2VecDataset.__init__(self, args)
         self.name = '20 News Groups Dataset'
         self.files = self.read_files_from_scikit()
         self.tokenizer = Tokenizer(args, custom_stop={'article', 'writes'})

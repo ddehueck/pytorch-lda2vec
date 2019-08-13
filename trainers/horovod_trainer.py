@@ -36,7 +36,7 @@ class HorovodTrainer(LDA2VecTrainer):
 
         # Setup dataloader with a distributed sampler
         self.logger.info("Loading Dataset...")
-        dataset = self.args.dataset(self.args, self.saver)
+        dataset = self.args.dataset(self.args)
         self.logger.info(f"Loaded Dataset: {dataset.name}")
 
         sampler = DistributedSampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())

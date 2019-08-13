@@ -10,9 +10,8 @@ from multiprocessing.dummy import Pool as ThreadPool
 class LDA2VecDataset(Dataset):
     BETA = 0.75
 
-    def __init__(self, args, saver):
+    def __init__(self, args):
         self.args = args
-        self.saver = saver
         self.term_freq_dict = dict()
         self.files = self._get_files_in_dir(args.dataset_dir)
         self.tokenizer = Tokenizer(args)

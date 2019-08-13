@@ -5,8 +5,8 @@ from .dataset import LDA2VecDataset
 
 class FreeTextDataset(LDA2VecDataset):
 
-    def __init__(self, args, saver):
-        LDA2VecDataset.__init__(self, args, saver)
+    def __init__(self, args):
+        LDA2VecDataset.__init__(self, args)
         self.name = 'PyPI Free Text Dataset'
         self.generate_examples_multi()
 
