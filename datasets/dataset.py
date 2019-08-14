@@ -174,7 +174,7 @@ class LDA2VecDataset(Dataset):
             tokens_to_remove = set([k for k in self.term_freq_dict if self.term_freq_dict[k] < 10])
             custom_stop = self.tokenizer.custom_stop.union(tokens_to_remove)
             
-            self.tokenizer = Tokenizer(self.args, custom_stop=custom_stop)
+            self.tokenizer = Tokenizer(custom_stop=custom_stop)
             self.removed_infrequent_tokens = True
 
             # Reset and regenerate examples!

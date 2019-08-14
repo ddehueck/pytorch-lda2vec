@@ -23,7 +23,7 @@ class NewsgroupsDataset(LDA2VecDataset):
 
         :returns: List of documents as strings
         """
-        newsgroups_data = fetch_20newsgroups(subset='train', remove=('headers', 'footers'))
+        newsgroups_data = fetch_20newsgroups(subset='all', remove=('headers', 'footers'))
         if self.args.toy:
             # Turns into a toy dataset
             return newsgroups_data['data'][:5]
