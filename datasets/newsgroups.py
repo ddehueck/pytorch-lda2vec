@@ -11,7 +11,7 @@ class NewsgroupsDataset(LDA2VecDataset):
         self.name = '20 News Groups Dataset'
         self.files = self.read_files_from_scikit()
         self.tokenizer = Tokenizer(custom_stop={'article', 'writes'})
-        self.generate_examples_multi()
+        self.generate()
 
         print(f'There were {len(list(self.term_freq_dict.keys()))} tokens generated')
 

@@ -46,7 +46,7 @@ class HorovodTrainer(LDA2VecTrainer):
         docs_init = utils.get_doc_vecs_lda_initialization(self.dataset) if self.args.lda_doc_init else None
 
         # Load model and training necessities
-        self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args,
+        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args,
             pretrained_vecs=pretrained_vecs, docs_init=docs_init)
 
         optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())

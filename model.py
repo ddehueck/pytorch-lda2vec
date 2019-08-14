@@ -23,7 +23,7 @@ class Lda2vec(nn.Module):
             uni = Uniform(-1.732, 1.732).sample((num_docs, args.num_topics))
             self.doc_weights = nn.Embedding.from_pretrained(uni, freeze=False)
         elif docs_init is not None:
-            self.doc_weights = nn.Embedding.from_pretrained(docs_init, freeze=False)
+            self.doc_weights = nn.Embedding(num_docs, args.num_topics).from_pretrained(docs_init, freeze=False)
         else:
             self.doc_weights = nn.Embedding(num_docs, args.num_topics)
         

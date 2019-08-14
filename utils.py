@@ -46,21 +46,23 @@ def get_doc_vecs_lda_initialization(dataset):
     :params dataset: Dataset to get documents from
     :returns: A tensor of size: num_docs x num_topics
     """
-
+    print('Using LDA Document Intializations...')
     save_init_file = f'{dataset._get_saved_ds_dir()}lda-doc-init.pth'
     if os.path.exists(save_init_file):
         # Data already exists - load it!
-        return torch.load(save_init_file)
+        return t.load(save_init_file)
 
-    print('Using LDA Document Intializations...')
     # Order docs - generated out of order
     ordered_docs = [dataset.tokenized_docs[k] for k in sorted(dataset.tokenized_docs)]
+    
     # Build inputs for LDA
     dictionary = corpora.Dictionary(ordered_docs)
     corpus = [dictionary.doc2bow(text) for text in ordered_docs]
+    
     # Run LDA and get resulting proportions
     lda = models.LdaModel(corpus, alpha=0.9, id2word=dictionary, num_topics=dataset.args.num_topics)
     corpus_lda = lda[corpus]
+    
     # Build tensor to initialize from
     doc_weights_init = np.zeros((len(corpus_lda), dataset.args.num_topics))
     for doc in tqdm(range(len(corpus_lda))):
