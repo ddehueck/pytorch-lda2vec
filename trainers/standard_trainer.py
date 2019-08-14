@@ -24,13 +24,13 @@ class Trainer(LDA2VecTrainer):
         self.dataloader = DataLoader(self.dataset, batch_size=args.batch_size,
             shuffle=True, num_workers=args.workers)
 
-        pretrained_vecs = None
-        if self.args.use_pretrained:
-            pretrained_vecs = utils.get_pretrained_vecs(self.dataset, self.args.nlp)
+        # Get model initializations
+        pretrained_vecs = utils.get_pretrained_vecs(self.dataset) if self.args.use_pretrained else None
+        docs_init = utils.get_doc_vecs_lda_initialization(self.dataset) if self.args.lda_doc_init else None
 
         # Load model and training necessities
         self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args,
-            pretrained_vecs=pretrained_vecs)
+            pretrained_vecs=pretrained_vecs, docs_init=docs_init)
 
         print(f'Current size of word embeds weights is {self.model.word_embeds.weight.size()}')
 

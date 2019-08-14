@@ -14,10 +14,12 @@ class LDA2VecDataset(Dataset):
         self.args = args
         self.term_freq_dict = dict()
         self.files = self._get_files_in_dir(args.dataset_dir)
-        self.tokenizer = Tokenizer(args)
+        self.tokenizer = Tokenizer()
+        self.tokenized_docs = dict()
         self.removed_infrequent_tokens = False
         self.idx2doc = dict()
         self.name = ''
+        # Save example to block files
         self.saved_ds_dir = 'saved_datasets/'
         self.block_files = {}
 
@@ -48,7 +50,6 @@ class LDA2VecDataset(Dataset):
 
     def _load_dataset(self):
         print(f'Loading dataset from: {self._get_saved_ds_dir()}')
-
         # Set block files
         metadata_file = f'{self._get_saved_ds_dir()}metadata.pth' 
         files = self._get_files_in_dir(self._get_saved_ds_dir())
@@ -117,11 +118,11 @@ class LDA2VecDataset(Dataset):
         self.idx2doc[str(doc_id)] = filename
 
         doc_str = self.read_file(file)
-        try:
-            tokenized_doc = self.tokenizer.tokenize_doc(doc_str)
-        except Exception as e:
-            print(doc_str)
-            raise Exception(e)
+        tokenized_doc = self.tokenizer.tokenize_doc(doc_str)
+
+        # Save for LDA document weight initializations
+        if self.removed_infrequent_tokens or self.args.toy:
+            self.tokenized_docs[doc_id] = tokenized_doc
 
         examples = []
         for i, token in enumerate(tokenized_doc):
@@ -226,9 +227,6 @@ class LDA2VecDataset(Dataset):
     def _add_token_to_vocab(self, token, tf_dict):
         """
         Add token to the token frequency dict
-
-        Adds new tokens to the tf_dict  and keeps track of
-        frequency of tokens
 
         :param token: String
         :param tf_dict: A {"token": frequency,} dict

@@ -17,6 +17,7 @@ tensorflow = "*"
 tqdm = "*"
 ujson = "*"
 sklearn = "*"
+gensim = "*"
 
 [requires]
 python_version = "3.7"

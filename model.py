@@ -7,14 +7,12 @@ from scipy.stats import ortho_group
 
 class Lda2vec(nn.Module):
 
-    def __init__(self, vocab_size, num_docs, args, pretrained_vecs=None):
+    def __init__(self, vocab_size, num_docs, args, pretrained_vecs=None, docs_init=None):
         super(Lda2vec, self).__init__()
         self.args = args
         self.topic_embeds = nn.Parameter(t.tensor(ortho_group.rvs(args.embedding_len)[:args.num_topics], dtype=t.float))
 
-        if args.use_pretrained:
-            assert pretrained_vecs is not None, "pretrained_vecs cannot be None"
-            # Initialize from pretrained
+        if pretrained_vecs is not None:
             self.word_embeds = nn.Embedding(vocab_size, args.embedding_len).from_pretrained(pretrained_vecs, freeze=False)
         else:
             self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
@@ -23,7 +21,9 @@ class Lda2vec(nn.Module):
              # Sample from a uniform distribution betwen ~[-sqrt(3), +sqrt(3)]
              # sqrt(3) chosen from goodfellow's GAN initialization
             uni = Uniform(-1.732, 1.732).sample((num_docs, args.num_topics))
-            self.doc_weights = nn.Embedding.from_pretrained(uni)
+            self.doc_weights = nn.Embedding.from_pretrained(uni, freeze=False)
+        elif docs_init is not None:
+            self.doc_weights = nn.Embedding.from_pretrained(docs_init, freeze=False)
         else:
             self.doc_weights = nn.Embedding(num_docs, args.num_topics)
         

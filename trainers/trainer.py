@@ -13,10 +13,8 @@ class LDA2VecTrainer:
         self.begin_epoch = 0
 
         if args.use_pretrained:
-            nlp = spacy.load('en_core_web_md')
-            _, embed_len = nlp.vocab.vectors.shape
-            self.args.nlp = nlp
-            self.args.embedding_len = embed_len
+            # SpaCy embedding length
+            self.args.embedding_len = 300
 
 
     def train(self):
