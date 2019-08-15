@@ -16,7 +16,7 @@ class LDA2VecDataset(Dataset):
         self.term_freq_dict = dict()
         self.files = self._get_files_in_dir(args.dataset_dir)
         self.tokenizer = Tokenizer()
-        self.tokenized_docs = dict()
+        self.tokenized_docs = []
         self.idx2doc = dict()
         self.name = ''
         # Save example to block files
@@ -65,7 +65,10 @@ class LDA2VecDataset(Dataset):
         # Create save to directory
         block_dir = f'{self._get_saved_ds_dir()}blocks/'
         if not os.path.exists(block_dir):
-            os.makedirs(block_dir)
+            try:
+                os.makedirs(block_dir)
+            except:
+                pass
         
         # Save to block file   
         filename = f'{block_dir}block-{uuid.uuid4()}.dat'
@@ -75,11 +78,7 @@ class LDA2VecDataset(Dataset):
 
     def _save_metadata(self):
         # TODO: More efficient way to load tf dict?
-        counter = dict(Counter(self.tokenized_docs))
-        for freq in counter:
-            for term in counter[freq]:
-                self.term_freq_dict[term] = freq
-
+        self.term_freq_dict = dict(Counter([t for doc in self.tokenized_docs for t in doc]))
         doc_lengths = [len(self.read_file(f)) for f in self.files]
 
         torch.save({
@@ -117,8 +116,9 @@ class LDA2VecDataset(Dataset):
             return
 
         # Generate tokenized docs
+        # May end up with less docs than files if files are empty
+        # or exactly alike.
         self._generate_tokenized_docs()
-        assert len(self.tokenized_docs) == len(self.files)
         # Clean tokenized docs
         self._clean_tokenized_docs()
         # Generate example file batches
@@ -128,55 +128,63 @@ class LDA2VecDataset(Dataset):
 
     
     def _generate_tokenized_docs(self):
+        # self.files length is 7532
         pool = ThreadPool(multiprocessing.cpu_count())
         batch_size = self.args.file_batch_size
         file_batches = self._batch_list(batch_size, self.files)
 
         print('Tokenizing Documents...')
-        for _ in tqdm(
+        for t_batch in tqdm(
             pool.imap_unordered(
                 self._generate_tokenized_docs_worker,
                 file_batches),
             total=len(self.files)//batch_size + 1):
-            continue
+            
+            # Add tokenized doc to global list
+            # Add to file name idx2doc
+            for t_doc, fn in t_batch:
+                self.tokenized_docs.append(t_doc)
+                idx = len(self.tokenized_docs) - 1 
+                self.idx2doc[idx] = fn
 
         pool.close()
         pool.join()
 
     
     def _generate_tokenized_docs_worker(self, file_batch):
+        """
+        :returns: list of tuples of form [(tokenized_doc, filename), ..., ...]
+        """
+        t_docs = []
         for file in file_batch:
             doc_str = self.read_file(file)
-            doc_id = self.files.index(file)
-            path, filename = os.path.split(file)
-            self.idx2doc[str(doc_id)] = filename
-            self.tokenized_docs[doc_id] = self.tokenizer.tokenize_doc(doc_str)
+            _, filename = os.path.split(file)
+            t_docs.append((self.tokenizer.tokenize_doc(doc_str), filename))
+        return t_docs
 
     
     def _clean_tokenized_docs(self):
         # Get total number of tokens
         print('Counting tokens...')
-        tokenized_docs = list(self.tokenized_docs.values()) # unpack dict
-        total_tokens = [t for doc in tokenized_docs for t in doc]
+        total_tokens = [t for doc in self.tokenized_docs for t in doc]
         counter = Counter(total_tokens)
 
         # Get all tokens to remove with a count of less than 20
-        to_remove = []
+        to_remove = {}
         for token, freq in counter.most_common():
-            if freq < 20 and not self.args.toy:
-                to_remove.append(token)
+            to_remove[token] = freq < 20 and not self.args.toy
 
         # Remove the identified tokens from documents
+        # TODO: Parallelize this
         print('Removing infrequent tokens...')
-        for doc_id in self.tokenized_docs:
-            cleaned_doc = [t for t in self.tokenized_docs[doc_id] if t not in to_remove]
-            self.tokenized_docs[doc_id] = cleaned_doc
+        for i, doc in enumerate(tqdm(self.tokenized_docs)):
+            self.tokenized_docs[i] = [t for t in doc if not to_remove[t]]
 
     
     def _generate_examples(self):
         pool = ThreadPool(multiprocessing.cpu_count())
         batch_size = self.args.file_batch_size
-        doc_batches = self._batch_list(batch_size, list(self.tokenized_docs.keys()))
+        doc_batches = self._batch_list(batch_size, self.tokenized_docs)
 
         print('Generating Examples...')
         for _ in tqdm(
@@ -194,26 +202,26 @@ class LDA2VecDataset(Dataset):
         """
         Generate examples worker
 
-        :param file_batch: List of doc ids - subset of tokenized_docs keys
+        :param file_batch: List of docs - subset of self.tokenized_docs
         :returns: None - saves batch to block file
         """
         examples = []
-        for doc_id in doc_batches:
-            examples.extend(self._generate_examples_from_doc(doc_id))
+        for doc in doc_batches:
+            examples.extend(self._generate_examples_from_doc(doc))
 
         # Save examples to a block file
         self._save_example_block(examples)
 
     
-    def _generate_examples_from_doc(self, doc_id):
+    def _generate_examples_from_doc(self, tokenized_doc):
         """
         Generates examples from a tokenized doc
 
-        :param doc_id: id to tokenized doc (a list of tokens)
+        :param tokenized_doc: A tokenized doc (a list of tokens)
         :returns: List of training examples
         """
-        tokenized_doc = self.tokenized_docs[doc_id]
         examples = []
+        doc_id = self.tokenized_docs.index(tokenized_doc)
         for i, token in enumerate(tokenized_doc):
             # Generate context words for token in this doc
             context_words = self._generate_contexts(
