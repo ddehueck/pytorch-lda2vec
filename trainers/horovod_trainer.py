@@ -42,8 +42,8 @@ class HorovodTrainer(LDA2VecTrainer):
             shuffle=False, sampler=sampler, num_workers=self.args.workers, pin_memory=True)
         
         # Get model initialization
-        pretrained_vecs = utils.get_pretrained_vecs(self.dataset) if self.args.use_pretrained else None
-        docs_init = utils.get_doc_vecs_lda_initialization(self.dataset) if self.args.lda_doc_init else None
+        pretrained_vecs = utils.get_pretrained_vecs(dataset) if self.args.use_pretrained else None
+        docs_init = utils.get_doc_vecs_lda_initialization(dataset) if self.args.lda_doc_init else None
 
         # Load model and training necessities
         model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args,
