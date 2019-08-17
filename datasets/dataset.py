@@ -86,7 +86,7 @@ class LDA2VecDataset(Dataset):
 
 
     def _save_metadata(self):
-        doc_lengths = [len(self.read_file(f)) for f in self.files]
+        doc_lengths = [len(self.read_file(doc)) for doc in self.tokenized_docs]
 
         torch.save({
             'idx2doc': self.idx2doc,
@@ -230,6 +230,8 @@ class LDA2VecDataset(Dataset):
 
         # Save examples to a block file
         self._save_example_block(examples)
+        if not self.args.read_from_blocks:
+            self.examples.extend(examples)
 
     
     def _generate_examples_from_doc(self, tokenized_doc):

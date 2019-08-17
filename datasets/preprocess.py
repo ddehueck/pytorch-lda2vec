@@ -39,8 +39,7 @@ class Tokenizer:
         """
         text = ' '.join(doc_str.split())  # remove excessive spaces
         text = self.nlp(text, disable=['parse', 'entity'])
-        return [t.lemma_ for t in text
-                if t.is_alpha and len(t) > 2 and not t.is_stop]
+        return [t.lemma_.lower() for t in text if t.is_alpha and len(t) > 2 and not t.is_stop]
 
 
     def is_valid_token(self, token):
