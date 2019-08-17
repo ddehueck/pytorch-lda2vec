@@ -49,7 +49,7 @@ class HorovodTrainer(LDA2VecTrainer):
 
         # Load model and training necessities
         model = Lda2vec(len(dataset.term_freq_dict), len(dataset.idx2doc), self.args,
-            pretrained_vecs=pretrained_vecs, docs_init=docs_init)
+            pretrained_vecs=pretrained_vecs, docs_init=docs_init).cuda()
 
         optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())
 
