@@ -1,5 +1,4 @@
 import torch
-import argparse
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -13,23 +12,27 @@ import os
 from .trainer import LDA2VecTrainer
 from collections import Counter
 
+
 class Trainer(LDA2VecTrainer):
 
     def __init__(self, args):
         LDA2VecTrainer.__init__(self, args)
         # Load data
         self.dataset = args.dataset(args)
-        self.logger.info("Finished loading dataset")
-
         self.dataloader = DataLoader(self.dataset, batch_size=args.batch_size,
             shuffle=True, num_workers=args.workers)
+
+        self.logger.info("Finished loading data")
+        self.logger.info(f'Number of training examples: {len(self.dataset)}')
+        self.logger.info(f'Number of documents: {len(self.dataset.idx2doc)}')
+        self.logger.info(f'There were {len(list(self.dataset.term_freq_dict.keys()))} tokens generated')
 
         # Get model initializations
         pretrained_vecs = utils.get_pretrained_vecs(self.dataset) if self.args.use_pretrained else None
         docs_init = utils.get_doc_vecs_lda_initialization(self.dataset) if self.args.lda_doc_init else None
 
         # Load model and training necessities
-        self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.files), args,
+        self.model = Lda2vec(len(self.dataset.term_freq_dict), len(self.dataset.idx2doc), args,
             pretrained_vecs=pretrained_vecs, docs_init=docs_init)
 
         self.optim = optim.Adam(self.model.parameters(), lr=args.lr)
@@ -78,17 +81,17 @@ class Trainer(LDA2VecTrainer):
             
             for i, data in enumerate(tqdm(self.dataloader)):
                 # unpack data
-                center, doc_id, target = data
-                center, doc_id, target = center.to(self.args.device), doc_id.to(self.args.device), target.to(self.args.device)
+                center, doc_id, targets = data
+                center, doc_id, targets = center.to(self.args.device), doc_id.to(self.args.device), targets.to(self.args.device)
                 # Remove accumulated gradients
                 self.optim.zero_grad()
                 # Get context vector: word + doc
-                context = self.model(center, doc_id)  # context - [batch_size x embed_len x 1]
+                context = self.model(center, doc_id)
                 # Calc loss: SGNS + Dirichlet
-                sgns_loss = self.sgns(context, self.model.word_embeds(target))  # target - [batch_size x 1]
-                diri_loss = self.dirichlet(self.model.doc_weights(doc_id))  # doc_id - [batch_size x 1]
+                sgns_loss = self.sgns(context, self.model.word_embeds(targets))
+                diri_loss = self.dirichlet(self.model.doc_weights(doc_id))
                 loss = sgns_loss + diri_loss
-               # Backprop and update
+                # Backprop and update
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
                 self.optim.step()
@@ -102,7 +105,7 @@ class Trainer(LDA2VecTrainer):
                 # Log at step
                 if global_step % self.args.log_step == 0:
                     norm = num_examples
-                    self.log_step(epoch, global_step, running_diri_loss/norm, running_sgns_loss/norm, doc_id, center, target)
+                    self.log_step(epoch, global_step, running_diri_loss/norm, running_sgns_loss/norm, doc_id, center)
             
             self.log_and_save_epoch(epoch, (running_sgns_loss + running_diri_loss)/num_examples)
 
@@ -114,7 +117,7 @@ class Trainer(LDA2VecTrainer):
         self.writer.add_embedding(
             self.model.get_doc_vectors(),
             global_step=epoch,
-            tag=f'de_epoch_{epoch}',
+            tag=f'de_epoch_{epoch+1}',
         )
 
         # Save checkpoint
@@ -128,9 +131,9 @@ class Trainer(LDA2VecTrainer):
         self.logger.info(f'Finished saving checkpoint')
 
 
-    def log_step(self, epoch, global_step, diri_loss, sgns_loss, doc_id, center, target):
+    def log_step(self, epoch, global_step, diri_loss, sgns_loss, doc_id, center):
         self.logger.info(f'#############################################')
-        self.logger.info(f'EPOCH: {epoch} | STEP: {global_step} | LOSS {diri_loss+sgns_loss}')
+        self.logger.info(f'EPOCH: {epoch+1} | STEP: {global_step} | LOSS {diri_loss+sgns_loss}')
         self.logger.info(f'#############################################\n\n')
         # Log loss
         self.logger.info(f'DIRI LOSS: {diri_loss}')
@@ -147,7 +150,6 @@ class Trainer(LDA2VecTrainer):
         
         self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
             {torch.index_select(self.model.word_embeds.weight.grad, 0, center.squeeze())}')
-        self.logger.info(f'\n{torch.index_select(self.model.word_embeds.weight.grad, 0, target.squeeze())}')
 
         # Log document weights - check for sparsity
         doc_weights = self.model.doc_weights.weight

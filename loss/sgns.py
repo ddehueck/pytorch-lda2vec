@@ -7,11 +7,12 @@ from .utils import AliasMultinomial
 
 class SGNSLoss(nn.Module):
     BETA = 0.75  # exponent to adjust sampling frequency
-    NUM_SAMPLES = 15  # Taken from Moody's OG code
 
     def __init__(self, dataset, word_embeddings, device):
         super(SGNSLoss, self).__init__()
         self.dataset = dataset
+        self.args = self.dataset.args
+        self.num_samples = 15
         self.vocab_len = word_embeddings.weight.size()[0]
         self.word_embeddings = word_embeddings
         self.device = device
@@ -25,30 +26,40 @@ class SGNSLoss(nn.Module):
         # Generate table
         self.unigram_table = self.generate_unigram_table()
 
-    def forward(self, context, target):
-        context, target = context.squeeze(), target.squeeze()  # batch_size x embed_size
+    def forward(self, context, targets):
+        # context - [batch_size x embed_size]
+        # targets - [batch_size x window_size x embed_size]
+        context, targets = context.squeeze(), targets.squeeze()
         
         # Compute non-sampled portion
-        dots = (context * target).sum(-1)  # batch_size
-        log_targets = F.logsigmoid(dots)
+        dots = (context.unsqueeze(1) * targets).sum(-1)  # [batch_size x window_size]
+        log_targets = F.logsigmoid(dots).sum(-1)  # [batch_size]
 
         # Compute sampled portion
-        samples = self.get_unigram_samples() # num_samples x batch_size
-        log_samples = []
-        for s in samples:
-            dot = (t.neg(context) * s).sum(-1) # batch_size
-            log_samples.append(F.logsigmoid(dot))
+        batch_size = len(log_targets)
 
-        log_samples = t.stack(log_samples).sum(0)
-        return t.add(log_targets, log_samples).mean().neg() # Negative so goes towards loss of 0
+        samples = self.get_unigram_samples(bs=batch_size)
+        sample_dots = (context.unsqueeze(1).unsqueeze(1).neg() * samples).sum(-1)  # [batch_size x window_size x num_samples]
+        log_samples = F.logsigmoid(sample_dots).sum(-1).sum(-1)  # [batch_size]
 
-    def get_unigram_samples(self, N=NUM_SAMPLES):
+        return t.add(log_targets, log_samples).mean().neg()  # Negative so goes towards loss of 0
+
+    def get_unigram_samples(self, bs=None):
         """
         Returns a sample according to a unigram distribution
         Randomly choose a value from self.unigram_table
         """
-        rand_idxs = self.unigram_table.draw(N).to(self.device)
-        return self.word_embeddings(rand_idxs).squeeze()
+        batch_size = self.args.batch_size if bs is None else bs
+        window_size = self.args.window_size * 2
+        embed_len = self.args.embedding_len
+        # How many samples are needed
+        n = batch_size * self.num_samples * window_size
+        # Get indices
+        rand_idxs = self.unigram_table.draw(n).to(self.device)
+        rand_idxs = rand_idxs.view(batch_size, window_size, self.num_samples)
+        # Get Embeddings
+        rand_embeddings = self.word_embeddings(rand_idxs).squeeze()
+        return rand_embeddings.view(batch_size, window_size, self.num_samples, embed_len)
 
     def get_unigram_prob(self, token_idx):
         return (self.transformed_freq_vec[token_idx].item()) / self.freq_sum.item()

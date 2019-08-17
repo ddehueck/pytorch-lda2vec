@@ -1,7 +1,6 @@
 import os
 import time
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data.distributed import DistributedSampler
@@ -36,6 +35,9 @@ class HorovodTrainer(LDA2VecTrainer):
         self.logger.info("Loading Dataset...")
         dataset = self.args.dataset(self.args)
         self.logger.info(f"Loaded Dataset: {dataset.name}")
+        self.logger.info(f'Number of training examples: {len(dataset)}')
+        self.logger.info(f'Number of documents: {len(dataset.idx2doc)}')
+        self.logger.info(f'There were {len(list(dataset.term_freq_dict.keys()))} tokens generated')
 
         sampler = DistributedSampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size,
@@ -46,7 +48,7 @@ class HorovodTrainer(LDA2VecTrainer):
         docs_init = utils.get_doc_vecs_lda_initialization(dataset) if self.args.lda_doc_init else None
 
         # Load model and training necessities
-        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.files), self.args,
+        model = Lda2vec(len(dataset.term_freq_dict), len(dataset.idx2doc), self.args,
             pretrained_vecs=pretrained_vecs, docs_init=docs_init)
 
         optimizer = optim.Adam(model.parameters(), lr=self.args.lr * hvd.size())
@@ -64,9 +66,9 @@ class HorovodTrainer(LDA2VecTrainer):
         dirichlet = DirichletLoss(self.args)
 
         if self.args.resume is not None:
-            self.logger.info(f'Loading checkpoint {self.args.resumer}')
+            self.logger.info(f'Loading checkpoint {self.args.resume}')
             if not os.path.isfile(self.args.resume):
-                raise Exception(f'There was no checkpoint found at {self.args.resum}')
+                raise Exception(f'There was no checkpoint found at {self.args.resume}')
 
             checkpoint = torch.load(self.args.resume)
             self.begin_epoch = checkpoint['epoch']  # Already added 1 when saving
@@ -122,12 +124,13 @@ class HorovodTrainer(LDA2VecTrainer):
 
             # Log and save only rank 0 GPU results
             if hvd.rank() == 0:
-                self.log_and_save_epoch(model, optimizer, epoch, dataset, (running_sgns_loss + running_diri_loss)/num_examples)
+                self.log_and_save_epoch(model, optimizer, epoch, (running_sgns_loss + running_diri_loss)/num_examples)
 
         # Finished - close writer
         self.writer.close()
 
-    def log_and_save_epoch(self, model, optim, epoch, dataset, loss):
+    def log_and_save_epoch(self, model, optim, epoch, loss):
+        epoch = epoch + 1
         self.logger.info(f'####################')
         self.logger.info(f'COMPLETED EPOCH: {epoch}')
         self.logger.info(f'####################')
@@ -158,7 +161,7 @@ class HorovodTrainer(LDA2VecTrainer):
             # Save checkpoint
             self.logger.info(f'Beginning to save checkpoint')
             self.saver.save_checkpoint({
-                'epoch': epoch + 1,
+                'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optim.state_dict(),
                 'loss': loss,
@@ -167,6 +170,7 @@ class HorovodTrainer(LDA2VecTrainer):
 
 
     def log_step(self, model, epoch, time, global_step, diri_loss, sgns_loss, doc_id, center, target):
+        epoch = epoch + 1
         self.logger.info(f'##################################################################################')
         self.logger.info(f'EPOCH: {epoch} | STEP: {global_step} | TIME: {time} (s/batch) | LOSS {diri_loss+sgns_loss}')
         self.logger.info(f'##################################################################################\n\n')
@@ -186,4 +190,3 @@ class HorovodTrainer(LDA2VecTrainer):
         
         self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
             {torch.index_select(model.word_embeds.weight.grad, 0, center.squeeze())}')
-        self.logger.info(f'\n{torch.index_select(model.word_embeds.weight.grad, 0, target.squeeze())}')

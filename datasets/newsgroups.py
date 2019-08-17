@@ -1,7 +1,6 @@
 from sklearn.datasets import fetch_20newsgroups
 from .dataset import LDA2VecDataset
 from .preprocess import Tokenizer
-import torch
 
 
 class NewsgroupsDataset(LDA2VecDataset):
@@ -12,8 +11,6 @@ class NewsgroupsDataset(LDA2VecDataset):
         self.files = self.read_files_from_scikit()
         self.tokenizer = Tokenizer(custom_stop={'article', 'writes'})
         self.generate()
-
-        print(f'There were {len(list(self.term_freq_dict.keys()))} tokens generated')
 
     def read_files_from_scikit(self):
         """

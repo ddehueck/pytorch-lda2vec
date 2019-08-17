@@ -58,6 +58,7 @@ class LDA2VecDataset(Dataset):
         metadata = torch.load(f'{self._get_saved_ds_dir()}metadata.pth' )
         self.idx2doc = metadata['idx2doc']
         self.term_freq_dict = metadata['term_freq_dict']
+        self.term_idx_dict = metadata['term_idx_dict']
         print('Loaded Dataset!')
     
 
@@ -77,14 +78,13 @@ class LDA2VecDataset(Dataset):
 
 
     def _save_metadata(self):
-        # TODO: More efficient way to load tf dict?
-        self.term_freq_dict = dict(Counter([t for doc in self.tokenized_docs for t in doc]))
         doc_lengths = [len(self.read_file(f)) for f in self.files]
 
         torch.save({
             'idx2doc': self.idx2doc,
             'term_freq_dict': self.term_freq_dict,
-            'doc_lengths': doc_lengths
+            'doc_lengths': doc_lengths,
+            'term_idx_dict': self.term_idx_dict
         }, f'{self._get_saved_ds_dir()}metadata.pth')
 
 
@@ -175,12 +175,20 @@ class LDA2VecDataset(Dataset):
             to_remove[token] = freq < 20 and not self.args.toy
 
         # Remove the identified tokens from documents
-        # TODO: Parallelize this
         print('Removing infrequent tokens...')
         for i, doc in enumerate(tqdm(self.tokenized_docs)):
             self.tokenized_docs[i] = [t for t in doc if not to_remove[t]]
 
-    
+        # Create term frequency dict - will generate vocab size from this
+        self.term_freq_dict = dict(Counter([t for doc in self.tokenized_docs for t in doc]))
+
+        # Turn documents into lists of token ids in vocab
+        # Use dict for index lookup for efficiency when feeding examples
+        self.term_idx_dict = {}
+        for i, t in enumerate(list(self.term_freq_dict.keys())):
+            self.term_idx_dict[t] = i
+
+
     def _generate_examples(self):
         pool = ThreadPool(multiprocessing.cpu_count())
         batch_size = self.args.file_batch_size
@@ -224,48 +232,66 @@ class LDA2VecDataset(Dataset):
         doc_id = self.tokenized_docs.index(tokenized_doc)
         for i, token in enumerate(tokenized_doc):
             # Generate context words for token in this doc
-            context_words = self._generate_contexts(
-                token, i, tokenized_doc
-            )
+            context_words = self._generate_contexts(i, tokenized_doc)
 
             # Form Examples:
             # An example consists of:
             #   center word: token
             #   document id: doc_id
             #   context_word: tokenized_doc[context_word_pos]
-            new_examples = [(token, doc_id, ctxt) for ctxt in context_words]
+            new_example = (token, doc_id, [w for w in context_words])
+            examples.append(new_example)
 
-            # Add to class
-            examples.extend(new_examples)
         return examples
 
 
-    def _generate_contexts(self, token, token_idx, tokenized_doc):
+    def _generate_contexts(self, center_idx, tokenized_doc):
         """
         Generate Token's Context Words
 
         Generates all the context words within the window size defined
-        during initialization around token.
+        during initialization around token. Ensures all contexts are
+        of 2 * args.window_size.
 
-        :param token: String - center token in pairs
-        :param token_idx: Index at which token is found in tokenized_doc
-        :paran tokenized_doc: List - Document broken into tokens
+        :param center_idx: Index at which token is found in tokenized_doc
+        :param tokenized_doc: List - Document broken into tokens
         :returns: List of context words
         """
+        assert len(tokenized_doc) > 2 * self.args.window_size
+
         contexts = []
+        words_before_needed = 0
+        words_after_needed = 0
         # Iterate over each position in window
         for w in range(-self.args.window_size, self.args.window_size + 1):
-            context_pos = token_idx + w
+            context_pos = center_idx + w
 
             # Make sure current center and context are valid
-            is_outside_doc = context_pos < 0 or context_pos >= len(tokenized_doc)
-            center_is_context = token_idx == context_pos
-
-            if is_outside_doc or center_is_context:
+            if context_pos < 0:
+                # At the beginning - use words after to account
+                words_after_needed += 1
+                continue
+            elif context_pos >= len(tokenized_doc):
+                # At the ending - use words before to account
+                words_before_needed += 1
+                continue
+            elif center_idx == context_pos:
                 # Not valid skip to next window position
                 continue
 
             contexts.append(tokenized_doc[context_pos])
+
+        # Account for if ran into beginning or end of a document
+        for i in range(words_before_needed):
+            context_pos = center_idx + -self.args.window_size - i - 1
+            contexts.append(tokenized_doc[context_pos])
+
+        for i in range(words_after_needed):
+            context_pos = center_idx + self.args.window_size + i + 1
+            contexts.append(tokenized_doc[context_pos])
+
+        assert len(contexts) == 2 * self.args.window_size
+
         return contexts
 
     
@@ -304,20 +330,20 @@ class LDA2VecDataset(Dataset):
 
         return files
 
-    def _example_to_tensor(self, center, doc_id, target):
+
+    def _example_to_tensor(self, center, doc_id, targets):
         """
         Takes raw example and turns it into tensor values
 
         :params center: String of the center word
-        :params doc_id: Document id training example is from
-        :params target: String of the target word
+        :params doc_id: Index to document vector of where training example is from
+        :params targets: list of Strings - the target words
         :returns: A tuple of tensors
         """
-        center_idx = list(self.term_freq_dict.keys()).index(center)
-        target_idx = list(self.term_freq_dict.keys()).index(target)
+        center = self.term_idx_dict[center]
+        targets = [self.term_idx_dict[t] for t in targets]
 
-        center, doc_id, target = torch.tensor([int(center_idx)]), torch.tensor([int(doc_id)]), torch.tensor([int(target_idx)])
-        return center, doc_id, target
+        return torch.tensor([center]), torch.tensor([doc_id]), torch.tensor([targets])
 
 
 

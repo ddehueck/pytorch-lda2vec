@@ -32,7 +32,7 @@ def get_pretrained_vecs(dataset):
     :params nlp: A spaCy NLP pipeline with pretrained vectors - md or lg
     :returns: A tensor of size: vocab_len x embed_len
     """
-
+    print('Loading Pretrained Vectors...')
     nlp = spacy.load('en_core_web_md')
     vocab = list(dataset.term_freq_dict.keys())
     vectors = [nlp.vocab[v].vector for v in vocab]

@@ -1,9 +1,8 @@
 import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions.uniform import Uniform
-import spacy
 from scipy.stats import ortho_group
+
 
 class Lda2vec(nn.Module):
 
@@ -17,12 +16,7 @@ class Lda2vec(nn.Module):
         else:
             self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
 
-        if args.uni_doc_init:
-             # Sample from a uniform distribution betwen ~[-sqrt(3), +sqrt(3)]
-             # sqrt(3) chosen from goodfellow's GAN initialization
-            uni = Uniform(-1.732, 1.732).sample((num_docs, args.num_topics))
-            self.doc_weights = nn.Embedding.from_pretrained(uni, freeze=False)
-        elif docs_init is not None:
+        if docs_init is not None:
             self.doc_weights = nn.Embedding(num_docs, args.num_topics).from_pretrained(docs_init, freeze=False)
         else:
             self.doc_weights = nn.Embedding(num_docs, args.num_topics)
@@ -31,7 +25,8 @@ class Lda2vec(nn.Module):
     def forward(self, center_id, doc_id):
         # x should take the form of: (center word, doc_id)
         # Get word vector
-        word_vecs = self.word_embeds(center_id) 
+        center_id, doc_id = center_id.squeeze(1), doc_id.squeeze(1)
+        word_vecs = self.word_embeds(center_id)
         
         # Get document vector
         # 1. Softmax document weights to get proportions

@@ -23,7 +23,7 @@ class Tokenizer:
         :returns: list of Strings, i.e. tokens
         """
 
-        # Send doc_str through pipeline
+        """# Send doc_str through pipeline
         spacy_doc = self.nlp(doc_str)
         # Filter 
         filtered_doc = filter(self.is_valid_token, spacy_doc)
@@ -36,6 +36,11 @@ class Tokenizer:
         # Filter out any custom stop
         clean_doc = [t for t in clean_doc if t not in self.custom_stop]
         return clean_doc
+        """
+        text = ' '.join(doc_str.split())  # remove excessive spaces
+        text = self.nlp(text, disable=['parse', 'entity'])
+        return [t.lemma_ for t in text
+                if t.is_alpha and len(t) > 2 and not t.is_stop]
 
 
     def is_valid_token(self, token):
