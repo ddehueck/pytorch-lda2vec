@@ -120,7 +120,7 @@ class HorovodTrainer(LDA2VecTrainer):
                     if global_step % self.args.log_step == 0:
                         time_per_batch = ((time.perf_counter() - begin_time)/global_step)/hvd.size()
                         self.log_step(model, epoch, time_per_batch, global_step, 
-                        running_diri_loss/num_examples, running_sgns_loss/num_examples, doc_id, center, target)
+                        running_diri_loss/num_examples, running_sgns_loss/num_examples, doc_id, center)
 
             # Log and save only rank 0 GPU results
             if hvd.rank() == 0:
@@ -169,7 +169,7 @@ class HorovodTrainer(LDA2VecTrainer):
             self.logger.info(f'Finished saving checkpoint')
 
 
-    def log_step(self, model, epoch, time, global_step, diri_loss, sgns_loss, doc_id, center, target):
+    def log_step(self, model, epoch, time, global_step, diri_loss, sgns_loss, doc_id, center):
         epoch = epoch + 1
         self.logger.info(f'##################################################################################')
         self.logger.info(f'EPOCH: {epoch} | STEP: {global_step} | TIME: {time} (s/batch) | LOSS {diri_loss+sgns_loss}')

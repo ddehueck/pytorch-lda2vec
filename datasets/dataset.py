@@ -22,6 +22,7 @@ class LDA2VecDataset(Dataset):
         # Save example to block files
         self.saved_ds_dir = 'saved_datasets/'
         self.block_files = {}
+        self.examples = []
 
         if args.toy:
             # Turns into a toy dataset
@@ -29,17 +30,20 @@ class LDA2VecDataset(Dataset):
 
 
     def __getitem__(self, index):
-        # Get file from index
-        num_examples = 0
-        for file in self.block_files:
-            block_length = self.block_files[file]
-            num_examples += block_length
-            if index < num_examples: 
-                # Example in current file
-                break
-        
-        in_file_index = index - (num_examples - block_length)
-        examples = torch.load(file)[in_file_index]
+        if self.args.read_from_blocks:
+            # Get file from index
+            num_examples = 0
+            for file in self.block_files:
+                block_length = self.block_files[file]
+                num_examples += block_length
+                if index < num_examples:
+                    # Example in current file
+                    break
+
+            in_file_index = index - (num_examples - block_length)
+            examples = torch.load(file)[in_file_index]
+        else:
+            examples = self.examples[index]
         return self._example_to_tensor(*examples)
 
 
@@ -52,7 +56,11 @@ class LDA2VecDataset(Dataset):
         # Get block files
         files = self._get_files_in_dir(f'{self._get_saved_ds_dir()}blocks/')
         for f in tqdm(files):
-            self.block_files[f] = len(torch.load(f))
+            saved_examples = torch.load(f)
+            self.block_files[f] = len(saved_examples)
+
+            if not self.args.read_from_blocks:
+                self.examples.extend(saved_examples)
 
         # Load metadata in
         metadata = torch.load(f'{self._get_saved_ds_dir()}metadata.pth' )
@@ -178,6 +186,9 @@ class LDA2VecDataset(Dataset):
         print('Removing infrequent tokens...')
         for i, doc in enumerate(tqdm(self.tokenized_docs)):
             self.tokenized_docs[i] = [t for t in doc if not to_remove[t]]
+
+        # Remove docs that are too short
+        self.tokenized_docs = [doc for doc in self.tokenized_docs if len(doc) > 2 * self.args.window_size]
 
         # Create term frequency dict - will generate vocab size from this
         self.term_freq_dict = dict(Counter([t for doc in self.tokenized_docs for t in doc]))

@@ -44,6 +44,8 @@ def get_args():
                         (default: 250)')
     parser.add_argument('--toy', type=str_to_bool, default=False, help='Boolean to \
                         use just 5 files as a toy dataset for testing (default: False)')
+    parser.add_argument('--read-from-blocks', type=str_to_bool, default=False,
+                        help='Boolean to read in files on get_item')
 
     """
     Model Parameters

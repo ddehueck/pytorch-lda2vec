@@ -114,11 +114,13 @@ class Trainer(LDA2VecTrainer):
     def log_and_save_epoch(self, epoch, loss):
 
        # Visualize document embeddings
+        self.logger.info(f'Beginning to add to tensorboard')
         self.writer.add_embedding(
             self.model.get_doc_vectors(),
             global_step=epoch,
             tag=f'de_epoch_{epoch+1}',
         )
+        self.logger.info(f'Finished adding to tensorboard')
 
         # Save checkpoint
         self.logger.info(f'Beginning to save checkpoint')

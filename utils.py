@@ -50,6 +50,7 @@ def get_doc_vecs_lda_initialization(dataset):
     save_init_file = f'{dataset._get_saved_ds_dir()}lda-doc-init.pth'
     if os.path.exists(save_init_file):
         # Data already exists - load it!
+        print('Loading saved lda init file...')
         return t.load(save_init_file)
     
     # Build inputs for LDA
@@ -73,6 +74,8 @@ def get_doc_vecs_lda_initialization(dataset):
 
     # Convert to tensor and save
     doc_weights_init = t.from_numpy(doc_weights_init).float()
+    print('Saving LDA doc weights init...')
     t.save(doc_weights_init, save_init_file)
+    print('Saved LDA doc weight init')
     return doc_weights_init
 

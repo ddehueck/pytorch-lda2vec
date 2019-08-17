@@ -17,6 +17,10 @@ class Lda2vec(nn.Module):
             self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
 
         if docs_init is not None:
+            docs_init = t.log(docs_init + 1e-5)
+            temperature = 7.0
+            docs_init /= temperature
+
             self.doc_weights = nn.Embedding(num_docs, args.num_topics).from_pretrained(docs_init, freeze=False)
         else:
             self.doc_weights = nn.Embedding(num_docs, args.num_topics)
