@@ -4,6 +4,7 @@ data/
 dataset.pth
 nohup.out
 saved_datasets/
+.idea/
 
 # Vim
 *.swp
