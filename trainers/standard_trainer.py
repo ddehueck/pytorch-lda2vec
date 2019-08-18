@@ -68,7 +68,6 @@ class Trainer(LDA2VecTrainer):
 
 
     def train(self):
-        # TODO: Offload logging data into logger class
         self.model.to(self.args.device)
         self.logger.info('Training on device: {}'.format(self.args.device))
         
@@ -102,18 +101,15 @@ class Trainer(LDA2VecTrainer):
                 global_step += 1
                 num_examples += len(data) # Last batch size may not equal args.batch_size
                 
-                # Log at step
-                if global_step % self.args.log_step == 0:
-                    norm = num_examples
-                    self.log_step(epoch, global_step, running_diri_loss/norm, running_sgns_loss/norm, doc_id, center)
-            
+            # Log at epoch step
+            norm = num_examples
+            self.log_step(epoch, global_step, running_diri_loss/norm, running_sgns_loss/norm, doc_id, center)
             self.log_and_save_epoch(epoch, (running_sgns_loss + running_diri_loss)/num_examples)
 
         self.writer.close()
 
     def log_and_save_epoch(self, epoch, loss):
 
-       # Visualize document embeddings
         self.logger.info(f'Beginning to add to tensorboard')
         self.writer.add_embedding(
             self.model.get_doc_vectors(),

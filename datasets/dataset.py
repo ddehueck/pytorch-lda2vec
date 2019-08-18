@@ -86,7 +86,7 @@ class LDA2VecDataset(Dataset):
 
 
     def _save_metadata(self):
-        doc_lengths = [len(self.read_file(doc)) for doc in self.tokenized_docs]
+        doc_lengths = [len(doc) for doc in self.tokenized_docs]
 
         torch.save({
             'idx2doc': self.idx2doc,
@@ -177,18 +177,18 @@ class LDA2VecDataset(Dataset):
         total_tokens = [t for doc in self.tokenized_docs for t in doc]
         counter = Counter(total_tokens)
 
-        # Get all tokens to remove with a count of less than 20
+        # Get all tokens to remove with a count of less than 20 aor greater than 1800
         to_remove = {}
         for token, freq in counter.most_common():
-            to_remove[token] = freq < 20 and not self.args.toy
+            to_remove[token] = (freq < 20 or freq > 1800) and not self.args.toy
 
         # Remove the identified tokens from documents
         print('Removing infrequent tokens...')
         for i, doc in enumerate(tqdm(self.tokenized_docs)):
             self.tokenized_docs[i] = [t for t in doc if not to_remove[t]]
 
-        # Remove docs that are too short
-        self.tokenized_docs = [doc for doc in self.tokenized_docs if len(doc) > 2 * self.args.window_size]
+        # Remove docs that are too short - must be more than 15 tokens
+        self.tokenized_docs = [doc for doc in self.tokenized_docs if len(doc) > 15]  # 2 * self.args.window_size]
 
         # Create term frequency dict - will generate vocab size from this
         self.term_freq_dict = dict(Counter([t for doc in self.tokenized_docs for t in doc]))
