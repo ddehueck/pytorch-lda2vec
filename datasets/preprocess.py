@@ -38,7 +38,8 @@ class Tokenizer:
         return clean_doc
         """
         text = ' '.join(doc_str.split())  # remove excessive spaces
-        text = self.nlp(text, disable=['parse', 'entity'])
+        text = self.nlp(text)#, disable=['parse', 'entity'])
+        text = [t for t in text if not t.like_email and not t.like_url]
         return [t.lemma_.lower() for t in text if t.is_alpha and len(t) > 2 and not t.is_stop]
 
 

@@ -150,7 +150,7 @@ class HorovodTrainer(LDA2VecTrainer):
         self.logger.info(f'MAXIMUM TOPICS AT INDICES, FREQUENCY: {max_counter}\n')
         self.logger.info(f'MOST FREQUENCT MAX INDICES: {max_counter.most_common(10)}\n')
         
-        if epoch+1 % self.args.save_step == 0:
+        if epoch % self.args.save_step == 0:
             # Visualize document embeddings
             self.writer.add_embedding(
                 model.get_doc_vectors(),

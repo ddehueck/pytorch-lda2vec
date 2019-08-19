@@ -1,4 +1,5 @@
 import torch as t
+import torch.nn.functional as F
 import numpy as np
 import spacy
 import os
@@ -22,6 +23,21 @@ def get_sparsity_score(vec):
     norm_score = sum(abs(vec.float().to('cpu') - uniform_vec.float())) / max_sparsity
     
     return norm_score.item()
+
+
+def get_topics(word_embeds, topic_vectors, vocab):
+    topics = []
+    for i, topic in enumerate(topic_vectors):
+        # Get 10 closest word_embeds
+        top_10 = get_n_closest_vectors(topic, word_embeds.weight)
+        topics.append(" ".join([vocab[vec] for vec in top_10]))
+    return topics
+
+
+def get_n_closest_vectors(vec, vector_table, n=10):
+    dist = F.cosine_similarity(vector_table, vec.unsqueeze(dim=1).transpose(0, 1))
+    index_sorted = dist.argsort()
+    return index_sorted[:n]
 
 
 def get_pretrained_vecs(dataset):

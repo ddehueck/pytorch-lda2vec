@@ -136,6 +136,11 @@ class LDA2VecDataset(Dataset):
 
     
     def _generate_tokenized_docs(self):
+        """
+        Sets self.tokenized_docs to a list of tuples of form:
+        [(tokenized_doc, filename), ..., ...]
+        :return:
+        """
         # self.files length is 7532
         pool = ThreadPool(multiprocessing.cpu_count())
         batch_size = self.args.file_batch_size
@@ -151,9 +156,7 @@ class LDA2VecDataset(Dataset):
             # Add tokenized doc to global list
             # Add to file name idx2doc
             for t_doc, fn in t_batch:
-                self.tokenized_docs.append(t_doc)
-                idx = len(self.tokenized_docs) - 1 
-                self.idx2doc[idx] = fn
+                self.tokenized_docs.append((t_doc, fn))
 
         pool.close()
         pool.join()
@@ -174,7 +177,7 @@ class LDA2VecDataset(Dataset):
     def _clean_tokenized_docs(self):
         # Get total number of tokens
         print('Counting tokens...')
-        total_tokens = [t for doc in self.tokenized_docs for t in doc]
+        total_tokens = [t for doc, fn in self.tokenized_docs for t in doc]
         counter = Counter(total_tokens)
 
         # Get all tokens to remove with a count of less than 20 aor greater than 1800
@@ -184,11 +187,19 @@ class LDA2VecDataset(Dataset):
 
         # Remove the identified tokens from documents
         print('Removing infrequent tokens...')
-        for i, doc in enumerate(tqdm(self.tokenized_docs)):
-            self.tokenized_docs[i] = [t for t in doc if not to_remove[t]]
+        for i, doc_fn in enumerate(tqdm(self.tokenized_docs)):
+            doc, fn = doc_fn
+            self.tokenized_docs[i] = ([t for t in doc if not to_remove[t]], fn)
 
         # Remove docs that are too short - must be more than 15 tokens
-        self.tokenized_docs = [doc for doc in self.tokenized_docs if len(doc) > 15]  # 2 * self.args.window_size]
+        self.tokenized_docs = [(doc, fn) for doc, fn in self.tokenized_docs if len(doc) > 15 and len(doc) < 10000]  # 2 * self.args.window_size]
+
+        # Create idx2doc dict after removing any tokenized docs
+        for i, doc_fn in enumerate(self.tokenized_docs):
+            doc, fn = doc_fn
+            self.idx2doc[i] = fn
+            # Don't need to store fn anymore
+            self.tokenized_docs[i] = doc
 
         # Create term frequency dict - will generate vocab size from this
         self.term_freq_dict = dict(Counter([t for doc in self.tokenized_docs for t in doc]))
