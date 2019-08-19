@@ -10,9 +10,7 @@ class FreeTextDataset(LDA2VecDataset):
         LDA2VecDataset.__init__(self, args)
         self.name = 'PyPI Free Text Dataset'
         self.tokenizer = Tokenizer(merge_noun_chunks=True)
-        self.generate_examples_multi()
-
-        print(f'There were {len(list(self.term_freq_dict.keys()))} tokens generated')
+        self.generate()
 
     def read_file(self, file):
         """

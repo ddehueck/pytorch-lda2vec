@@ -38,6 +38,9 @@ def get_n_closest_vectors(vec, vector_table, n=10):
     dist = F.cosine_similarity(vector_table, vec.unsqueeze(dim=1).transpose(0, 1))
     index_sorted = dist.argsort()
     return index_sorted[:n]
+    #dot = (vector_table * vec).sum(-1)
+    #prob = F.softmax(dot).argsort().detach().cpu().numpy()[::-1]
+    #return prob[:n]
 
 
 def get_pretrained_vecs(dataset):

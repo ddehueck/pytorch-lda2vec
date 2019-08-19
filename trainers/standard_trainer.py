@@ -93,12 +93,6 @@ class Trainer(LDA2VecTrainer):
                 # Backprop and update
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
-
-                # level of noise becomes lower as training goes on
-                sigma = 0.4/(epoch+1)**0.55
-                noise = sigma*torch.randn_like(self.model.doc_weights.weight, requires_grad=True).to(self.args.device)
-                self.model.doc_weights.weight.grad += noise
-
                 self.optim.step()
 
                 # Keep track of loss
@@ -153,8 +147,8 @@ class Trainer(LDA2VecTrainer):
 
             self.logger.info(f'TOPIC GRADIENTS:\n{self.model.topic_embeds.grad}')
 
-            self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
-                {torch.index_select(self.model.word_embeds.weight.grad, 0, center.squeeze())}')
+           # self.logger.info(f'WORD EMBEDDING GRADIENTS:\n\
+            #    {torch.index_select(self.model.word_embeds.weight.grad, 0, center.squeeze())}')
 
             # Log document weights - check for sparsity
             doc_weights = self.model.doc_weights.weight

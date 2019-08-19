@@ -14,8 +14,6 @@ class Lda2vec(nn.Module):
         if pretrained_vecs is not None:
             self.word_embeds = nn.Embedding(vocab_size, args.embedding_len).from_pretrained(pretrained_vecs, freeze=False)
         else:
-            # TODO: scale_grad_by_freq (boolean, optional) – If given, this will scale gradients by the inverse of frequency of the words in the mini-batch. Default False
-            # TODO: sparse (bool, optional) – If True, gradient w.r.t. weight matrix will be a sparse tensor. See Notes for more details regarding sparse gradients
             self.word_embeds = nn.Embedding(vocab_size, args.embedding_len)
 
         if docs_init is not None:
@@ -26,7 +24,7 @@ class Lda2vec(nn.Module):
             self.doc_weights = nn.Embedding(num_docs, args.num_topics).from_pretrained(docs_init, freeze=False)
         else:
             self.doc_weights = nn.Embedding(num_docs, args.num_topics)
-            self.doc_weights.weight.data /= np.sqrt(num_docs + args.num_topics)
+            #self.doc_weights.weight.data /= np.sqrt(num_docs + args.num_topics)
         
 
     def forward(self, center_id, doc_id):
